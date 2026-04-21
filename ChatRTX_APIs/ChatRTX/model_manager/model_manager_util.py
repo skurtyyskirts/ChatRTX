@@ -20,7 +20,6 @@
 # DEALINGS IN THE SOFTWARE.
 
 import ngcsdk
-import json
 import os
 import shutil
 import builtins
