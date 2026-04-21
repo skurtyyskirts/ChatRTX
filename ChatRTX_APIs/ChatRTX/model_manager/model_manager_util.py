@@ -25,6 +25,7 @@ import os
 import shutil
 import builtins
 import subprocess
+import shlex
 import requests
 from tqdm import tqdm
 import time
@@ -60,7 +61,7 @@ def execute_command(command):
     """Executes a command in the command line."""
     try:
         # Launch the command and wait for it to finish
-        process = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.run(command, shell=False, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         # Decode and print the stdout and stderr from the command
         print(process.stdout.decode())
         print(process.stderr.decode())
@@ -73,12 +74,15 @@ def execute_command(command):
 def build_engine_for_model(model_info, checkpoints_local_dir, engine_local_dir):
     # Read the command from model_info
     engine_build_cmd = model_info['prerequisite']['engine_build_command']
-    # Replace placeholders with actual directory paths
-    engine_build_cmd_formatted = engine_build_cmd.replace('%checkpoints_local_dir%', f'"{checkpoints_local_dir}"').replace(
-        '%engine_dir%', f'"{engine_local_dir}"').replace("%output_timing_cache_dir%", f'"{engine_local_dir}"')
+
+    # Safely split the command and replace placeholders
+    command_list = shlex.split(engine_build_cmd)
+    for i in range(len(command_list)):
+        command_list[i] = command_list[i].replace('%checkpoints_local_dir%', checkpoints_local_dir).replace(
+            '%engine_dir%', engine_local_dir).replace("%output_timing_cache_dir%", engine_local_dir)
 
     # Execute the formatted command
-    execute_command(engine_build_cmd_formatted)
+    execute_command(command_list)
     engine_path = os.path.join(engine_local_dir, model_info['metadata']['engine'])
     if os.path.exists(engine_path):
         print("Engine build succeeded")
