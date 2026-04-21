@@ -41,6 +41,7 @@ import FineTuningCard from '../fine-tuning-card/fine-tuning-card'
 import { themeSettings } from '../../theme/theme'
 
 const clientAPI = (window as any).clientAPI as typeof ClientAPI
+const initiatedDownloads = new Set<string>()
 
 export default function FineTuningSection({ modelId }: { modelId: ModelId }) {
     const [isFineTuningActive, setIsFineTuningActive] = useState(
@@ -54,10 +55,15 @@ export default function FineTuningSection({ modelId }: { modelId: ModelId }) {
         )
     const [isBaseModelDownloadInit, setIsBaseModelDownloadInit] =
         useState<boolean>(
-            clientAPI.getModelFineTuningDetails(modelId).isBaseModelDownloaded
+            clientAPI.getModelFineTuningDetails(modelId)
+                .isBaseModelDownloaded || initiatedDownloads.has(modelId)
         )
     const [isBaseModelDownloading, setIsBaseModeDownloading] =
-        useState<boolean>(false)
+        useState<boolean>(
+            initiatedDownloads.has(modelId) &&
+                !clientAPI.getModelFineTuningDetails(modelId)
+                    .isBaseModelDownloaded
+        )
     const [showFineTuningCard, setShowFineTuningCard] = useState(
         clientAPI.getModelFineTuningDetails(modelId).FineTuningProfileConfigs
             .length === 0
@@ -73,6 +79,20 @@ export default function FineTuningSection({ modelId }: { modelId: ModelId }) {
     ] = useState(false)
 
     useEffect(() => {
+        setIsFineTuningActive(clientAPI.isFineTuningEnabled(modelId))
+        const details = clientAPI.getModelFineTuningDetails(modelId)
+        setModelFineTuningDetails(details)
+        setIsBaseModelDownloadInit(
+            details.isBaseModelDownloaded || initiatedDownloads.has(modelId)
+        )
+        setIsBaseModeDownloading(
+            initiatedDownloads.has(modelId) && !details.isBaseModelDownloaded
+        )
+        setShowFineTuningCard(details.FineTuningProfileConfigs.length === 0)
+        setCurrentActivatingProfile('')
+        setIsCreatingFineTuningUnderProcess(false)
+        setIsFineTuningToggleInProcess(false)
+
         const modelFineTuningDetailsUpdateListener =
             clientAPI.onModelFineTuningDetailsUpdate(() => {
                 console.log(
@@ -99,7 +119,13 @@ export default function FineTuningSection({ modelId }: { modelId: ModelId }) {
             modelFineTuningDetailsUpdateListener()
             onCreateFineTuningListener()
         }
-    }, [])
+    }, [modelId])
+
+    useEffect(() => {
+        if (modelFineTuningDetails.isBaseModelDownloaded) {
+            setIsBaseModeDownloading(false)
+        }
+    }, [modelFineTuningDetails.isBaseModelDownloaded])
 
     const activateFineTuning = (event: React.ChangeEvent<HTMLInputElement>) => {
         setIsFineTuningToggleInProcess(true)
@@ -110,9 +136,10 @@ export default function FineTuningSection({ modelId }: { modelId: ModelId }) {
         ) {
             setShowFineTuningCard(true)
         }
-        if (!isBaseModelDownloadInit) {
-            // TODO: Start downloading base model only once
+        if (event.target.checked && !isBaseModelDownloadInit) {
             console.log('Downloading base model ', isBaseModelDownloadInit)
+            clientAPI.downloadBaseModel(modelId)
+            initiatedDownloads.add(modelId)
             setIsBaseModelDownloadInit(true)
             setIsBaseModeDownloading(true)
         }
