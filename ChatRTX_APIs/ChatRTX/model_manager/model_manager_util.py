@@ -189,7 +189,7 @@ def process_model_files(model_info, download_dir, model_setup_path):
         return False
 
 def download_file(url, destination):
-    with requests.get(url, stream=True) as r:
+    with requests.get(url, stream=True, timeout=30) as r:
         r.raise_for_status()
         total_size_in_bytes = int(r.headers.get('content-length', 0))
         block_size = 1024  # 1 Kibibyte
