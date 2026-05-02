@@ -53,7 +53,9 @@ class ChatRTXLogger:
         # File handler
         if log_file:
 
-            os.makedirs(os.path.dirname(log_file), exist_ok=True)
+            log_dir = os.path.dirname(log_file)
+            if log_dir:
+                os.makedirs(log_dir, exist_ok=True)
 
             # Check if the file exists, and create it if it does not
             if not os.path.exists(log_file):

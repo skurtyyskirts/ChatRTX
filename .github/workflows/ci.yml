@@ -24,6 +24,23 @@ jobs:
       - name: Run flake8
         run: flake8 ChatRTX_APIs/ChatRTX --config=setup.cfg
 
+  validate-requirements:
+    name: Validate Requirements
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Validate API requirements resolvable
+        run: pip install --dry-run -r ChatRTX_APIs/ChatRTX/requirements.txt
+
+      - name: Validate App requirements resolvable
+        run: pip install --dry-run -r ChatRTX_App/requirements.txt
+
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
