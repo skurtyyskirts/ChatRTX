@@ -20,15 +20,16 @@
 # DEALINGS IN THE SOFTWARE.
 
 from pynvml import nvmlInit, nvmlDeviceGetHandleByIndex, nvmlDeviceGetMemoryInfo
-from ChatRTX.inference.trtllm.whisper.trt_whisper import WhisperTRTLLM, decode_audio_file
+from ChatRTX.inference.trtllm.whisper.trt_whisper import WhisperTRTLLM, decode_audio_file, DecodeAudioArgs
 from ChatRTX.inference.trtllm.whisper.whisper_utils import process_input_audio
 import time
+import threading
 
 
 asr_engine_path = "C:\\neva-git\\trt-llm-rag-windows\\ChatRTX\\model\\whisper\\whisper_medium_int8_engine"
 asr_assets_path = "C:\\neva-git\\trt-llm-rag-windows\\ChatRTX\\model\\whisper\\whisper_assets"
 selected_ChatGLM= False
-whisper_model_loaded = False
+whisper_model_loaded = threading.Event()
 whisper_model = None
 enable_asr = False
 audio_path="C:\\neva-git\\todelete\\1221-135766-0002.wav"
@@ -47,7 +48,7 @@ def mic_init_handler():
         del whisper_model
         whisper_model = None
     whisper_model = WhisperTRTLLM(asr_engine_path, assets_dir=asr_assets_path)
-    whisper_model_loaded = True
+    whisper_model_loaded.set()
     return True
 
 
@@ -59,25 +60,23 @@ def mic_recording_done_handler(audio_path):
     
     # Check and wait until model is loaded before running it.
     checks_for_model_loading = 40
-    checks_left_for_model_loading = checks_for_model_loading
     sleep_time = 0.2
-    while checks_left_for_model_loading>0 and not whisper_model_loaded:
-        time.sleep(sleep_time)
-        checks_left_for_model_loading -= 1
-    assert checks_left_for_model_loading>0, f"Whisper model loading not finished even after {(checks_for_model_loading*sleep_time)} seconds"
-    if checks_left_for_model_loading == 0:
+
+    loaded = whisper_model_loaded.wait(timeout=checks_for_model_loading * sleep_time)
+    assert loaded, f"Whisper model loading not finished even after {checks_for_model_loading * sleep_time} seconds"
+    if not loaded:
         return ""
 
     new_file_path = process_input_audio(audio_path)
     language = "english"
     if selected_ChatGLM: language = "chinese"
-    transcription = decode_audio_file( new_file_path, whisper_model, language=language, mel_filters_dir=asr_assets_path)
+    transcription = decode_audio_file(DecodeAudioArgs(input_file_path=new_file_path, model=whisper_model, language=language, mel_filters_dir=asr_assets_path))
 
     if whisper_model is not None:        
         whisper_model.unload_model()
         del whisper_model
         whisper_model = None
-    whisper_model_loaded = False
+    whisper_model_loaded.clear()
     return transcription
 
 nvmlInit()
