@@ -41,7 +41,6 @@ from llama_index.core.constants import DEFAULT_CONTEXT_WINDOW, DEFAULT_NUM_OUTPU
 from llama_index.core.llms.callbacks import llm_chat_callback, llm_completion_callback
 from llama_index.core.llms.custom import CustomLLM
 from typing import Any, Callable, Dict, Optional, Sequence
-from typing import Any, Callable, Dict, Optional
 
 class TrtLlmAPI(CustomLLM):
     """A custom LLM class for handling models optimized with TensorRT.
@@ -235,7 +234,6 @@ class TrtLlmAPI(CustomLLM):
         Returns:
             CompletionResponse: Structured response containing the text and metadata.
         """
-        is_formatted = kwargs.pop("formatted", False)
         output_txt = self._model.complete(prompt, **kwargs)
         return CompletionResponse(text=output_txt, raw=self.generate_completion_dict(output_txt))
 

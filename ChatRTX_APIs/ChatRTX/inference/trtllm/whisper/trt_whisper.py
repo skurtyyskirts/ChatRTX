@@ -20,13 +20,10 @@
 # DEALINGS IN THE SOFTWARE.
 import json
 import re
-import time
 from collections import OrderedDict
 from pathlib import Path
 
 import torch
-from datasets import load_dataset
-from torch.utils.data import DataLoader
 from ChatRTX.inference.trtllm.whisper.whisper_utils import log_mel_spectrogram
 import tensorrt_llm
 import tensorrt_llm.logger as logger
@@ -194,8 +191,6 @@ class WhisperEncoding:
         with open(config_path, 'r') as f:
             config = json.load(f)
 
-        use_gpt_attention_plugin = config['plugin_config'][
-            'gpt_attention_plugin']
         dtype = config['builder_config']['precision']
         n_mels = config['builder_config']['n_mels']
         num_languages = config['builder_config']['num_languages']
