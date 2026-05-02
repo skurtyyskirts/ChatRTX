@@ -22,7 +22,7 @@ import gc
 import time
 import uuid
 import torch
-from ChatRTX.inference.trtllm.trtllm import TrtLlm
+from ChatRTX.inference.trtllm.trtllm import TrtLlm, TrtLlmConfig
 from llama_index.core.bridge.pydantic import Field, PrivateAttr
 from llama_index.core.base.llms.types import (
     ChatMessage,
@@ -109,17 +109,18 @@ class TrtLlmAPI(CustomLLM):
             trtLlm_debug_mode (bool): Enable debug mode for TensorRT operations.
             verbose (bool): Enable verbose output.
         """
-        self._model = TrtLlm(
+        config = TrtLlmConfig(
             model_path=model_path,
             tokenizer_dir=tokenizer_dir,
             temperature=temperature,
             max_new_tokens=max_new_tokens,
             context_window=context_window,
-            vocab_file=vocab_file,  # Previously was set as None mistakenly.
+            vocab_file=vocab_file,
             use_py_session=use_py_session,
             add_special_tokens=add_special_tokens,
             trtLlm_debug_mode=trtLlm_debug_mode
         )
+        self._model = TrtLlm(config)
 
         self._model_path = model_path
         self._context_window = context_window
