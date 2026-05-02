@@ -25,7 +25,7 @@ import os.path
 import shutil
 from ChatRTX.model_manager.model_manager_util import download_model_by_name, build_engine_by_name, verify_clip_checksum
 from ChatRTX.model_manager.verify_model_install import update_config
-from ChatRTX.logger import ChatRTXLogger
+from ChatRTX.logger import ChatRTXLogger, LoggerConfig
 from ChatRTX.model_manager.config import Config
 
 class ModelManager:
@@ -95,7 +95,7 @@ class ModelManager:
         for key in keys:
             expanded_path = self.expand_programdata_path(self.config.get_config(key))
             self.config.write_default_config(key, expanded_path)
-        ChatRTXLogger(log_level=logging.DEBUG, log_file='chatRTX.log')
+        ChatRTXLogger(LoggerConfig(log_level=logging.DEBUG, log_file='chatRTX.log'))
         self._logger = ChatRTXLogger.get_logger()
 
     def expand_programdata_path(self, path):

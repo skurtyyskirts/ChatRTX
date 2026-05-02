@@ -23,7 +23,7 @@ from ChatRTX.inference.trtllm.trtllm import TrtLlm
 from ChatRTX.inference.pytorch.CLIP import ClipInference
 from ChatRTX.llm_prompt_templates import LLMPromptTemplate
 import os, json
-from ChatRTX.logger import ChatRTXLogger
+from ChatRTX.logger import ChatRTXLogger, LoggerConfig
 import logging
 
 class ChatRTX:
@@ -49,7 +49,7 @@ class ChatRTX:
         self._llm = None
 
         # Initialize the logger
-        ChatRTXLogger(log_level=logging.INFO, log_file='ChatRTX.log')
+        ChatRTXLogger(LoggerConfig(log_level=logging.INFO, log_file='ChatRTX.log'))
         self._logger = ChatRTXLogger.get_logger()
         app_config = os.path.join(os.path.dirname(os.path.abspath(__file__)), "./config/app_config.json")
         self._app_config_info = self._load_config(app_config)

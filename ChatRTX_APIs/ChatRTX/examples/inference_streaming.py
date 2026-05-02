@@ -23,10 +23,10 @@ from ChatRTX.chatrtx import ChatRTX
 from ChatRTX.model_manager.model_manager import ModelManager
 import logging
 import sys
-from ChatRTX.logger import ChatRTXLogger
+from ChatRTX.logger import ChatRTXLogger, LoggerConfig
 
 # Initialize logger
-ChatRTXLogger(log_level=logging.INFO)
+ChatRTXLogger(LoggerConfig(log_level=logging.INFO))
 logger = ChatRTXLogger.get_logger()
 
 # Define the directory where models will be downloaded
