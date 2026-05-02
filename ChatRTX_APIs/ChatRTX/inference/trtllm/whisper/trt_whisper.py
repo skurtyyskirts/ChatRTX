@@ -23,6 +23,16 @@ import re
 from collections import OrderedDict
 from pathlib import Path
 
+from dataclasses import dataclass
+
+@dataclass
+class GenerateArgs:
+    decoder_input_ids: 'torch.Tensor'
+    encoder_outputs: 'torch.Tensor'
+    eot_id: int
+    max_new_tokens: int = 40
+    num_beams: int = 1
+
 import torch
 from ChatRTX.inference.trtllm.whisper.whisper_utils import log_mel_spectrogram
 import tensorrt_llm
@@ -288,12 +298,12 @@ class WhisperDecoding:
 
         return decoder_generation_session
 
-    def generate(self,
-                 decoder_input_ids,
-                 encoder_outputs,
-                 eot_id,
-                 max_new_tokens=40,
-                 num_beams=1):
+    def generate(self, args: GenerateArgs):
+        decoder_input_ids = args.decoder_input_ids
+        encoder_outputs = args.encoder_outputs
+        eot_id = args.eot_id
+        max_new_tokens = args.max_new_tokens
+        num_beams = args.num_beams
         encoder_input_lengths = torch.tensor(
             [encoder_outputs.shape[1] for x in range(encoder_outputs.shape[0])],
             dtype=torch.int32,
@@ -373,11 +383,14 @@ class WhisperTRTLLM(object):
         decoder_input_ids = prompt_id.repeat(batch_size, 1)
 
         encoder_output = self.encoder.get_audio_features(mel)
-        output_ids = self.decoder.generate(decoder_input_ids,
-                                           encoder_output,
-                                           self.eot_id,
-                                           max_new_tokens=96,
-                                           num_beams=num_beams)
+        generate_args = GenerateArgs(
+            decoder_input_ids=decoder_input_ids,
+            encoder_outputs=encoder_output,
+            eot_id=self.eot_id,
+            max_new_tokens=96,
+            num_beams=num_beams
+        )
+        output_ids = self.decoder.generate(generate_args)
         texts = []
         for i in range(len(output_ids)):
             text = self.tokenizer.decode(output_ids[i][0]).strip()
