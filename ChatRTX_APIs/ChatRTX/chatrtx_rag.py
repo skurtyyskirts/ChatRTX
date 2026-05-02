@@ -19,7 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from ChatRTX.rags.llama_index.trtllm_api import TrtLlmAPI
+from ChatRTX.rags.llama_index.trtllm_api import TrtLlmAPI, TrtLlmAPIConfig
 from ChatRTX.inference.trtllm.utils import (read_model_name)
 from llama_index.core import SimpleDirectoryReader, VectorStoreIndex, Settings, StorageContext, load_index_from_storage
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
@@ -27,8 +27,10 @@ from llama_index.vector_stores.faiss import FaissVectorStore
 from llama_index.core.node_parser import SentenceSplitter
 from ChatRTX.llm_prompt_templates import LLMPromptTemplate
 import faiss
-import os, json
-import gc, torch
+import os
+import json
+import gc
+import torch
 from ChatRTX.logger import ChatRTXLogger
 import shutil
 import logging
@@ -104,9 +106,8 @@ class ChatRTXRag:
             prompt_template_obj = LLMPromptTemplate()
             text_qa_template_str = prompt_template_obj.model_context_template(model_name)
 
-            self._llm = TrtLlmAPI(
+            config = TrtLlmAPIConfig(
                 model_path=model_path,
-                # engine_name="rank0.engine",
                 tokenizer_dir=tokenizer_dir,
                 temperature=model_info["metadata"].get("temperature", 0.1),
                 max_new_tokens=model_info["metadata"].get("max_new_tokens", None),
@@ -117,6 +118,7 @@ class ChatRTXRag:
                 add_special_tokens=add_special_tokens,
                 trtLlm_debug_mode=trtLlm_debug_mode
             )
+            self._llm = TrtLlmAPI(config)
             return True
         except Exception as e:
             self._logger.error(f"Failed to init Llama-index TRTLLM model object: Error {str(e)}")
@@ -145,9 +147,9 @@ class ChatRTXRag:
         :param kwargs
         """
         try:
-            if self._embedding_model == None and self._embedding_dim == None:
+            if self._embedding_model is None and self._embedding_dim is None:
                 self.set_embedding_model(self._app_config_info["embedded_model"], self._app_config_info["embedded_dimension"])
-            if self._llm == None:
+            if self._llm is None:
                 self._logger.error("LM model is null. Please create object of llm by calling init_llamaIndex_llm function")
                 raise Exception("LLM model is null. Please create object of llm by calling init_llamaIndex_llm function")
 
@@ -222,7 +224,8 @@ class ChatRTXRag:
         """
         try:
             if os.path.exists(folder_path) and os.listdir(folder_path):
-                file_metadata = lambda x: {"filename": x}
+                def file_metadata(x):
+                    return {"filename": x}
                 documents = SimpleDirectoryReader(folder_path, file_metadata=file_metadata,
                                                   recursive=True,
                                                   required_exts=[".pdf", ".doc", ".docx", ".txt", ".xml"]).load_data()

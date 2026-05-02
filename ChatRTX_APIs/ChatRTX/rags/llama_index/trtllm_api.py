@@ -18,6 +18,9 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Optional, Sequence
+
 import gc
 import time
 import uuid
@@ -40,8 +43,24 @@ from llama_index.core.callbacks import CallbackManager
 from llama_index.core.constants import DEFAULT_CONTEXT_WINDOW, DEFAULT_NUM_OUTPUTS
 from llama_index.core.llms.callbacks import llm_chat_callback, llm_completion_callback
 from llama_index.core.llms.custom import CustomLLM
-from typing import Any, Callable, Dict, Optional, Sequence
-from typing import Any, Callable, Dict, Optional
+
+
+@dataclass
+class TrtLlmAPIConfig:
+    model_path: Optional[str] = None
+    tokenizer_dir: Optional[str] = None
+    vocab_file: Optional[str] = None
+    temperature: float = 0.1
+    max_new_tokens: int = DEFAULT_NUM_OUTPUTS
+    context_window: int = DEFAULT_CONTEXT_WINDOW
+    completion_to_prompt: Optional[Callable] = None
+    prompt_template: Optional[Any] = None
+    callback_manager: Optional[CallbackManager] = None
+    generate_kwargs: Optional[Dict[str, Any]] = None
+    model_kwargs: Optional[Dict[str, Any]] = None
+    use_py_session: bool = True
+    add_special_tokens: bool = False
+    trtLlm_debug_mode: bool = False
 
 class TrtLlmAPI(CustomLLM):
     """A custom LLM class for handling models optimized with TensorRT.
@@ -71,73 +90,41 @@ class TrtLlmAPI(CustomLLM):
     _context_window = PrivateAttr()
     _max_new_tokens = PrivateAttr()
 
-    def __init__(
-            self,
-            model_path: Optional[str] = None,
-            tokenizer_dir: Optional[str] = None,
-            vocab_file: Optional[str] = None,
-            temperature: float = 0.1,
-            max_new_tokens: int = DEFAULT_NUM_OUTPUTS,
-            context_window: int = DEFAULT_CONTEXT_WINDOW,
-            #messages_to_prompt: Optional[Callable] = None,
-            completion_to_prompt: Optional[Callable] = None,
-            prompt_template=None,
-            callback_manager: Optional[CallbackManager] = None,
-            generate_kwargs: Optional[Dict[str, Any]] = None,
-            model_kwargs: Optional[Dict[str, Any]] = None,
-            use_py_session=True,
-            add_special_tokens=False,
-            trtLlm_debug_mode=False
-    ) -> None:
+    def __init__(self, config: TrtLlmAPIConfig) -> None:
         """Initialize the LlamaIndexTrtLlm class with specified parameters.
 
         Args:
-            model_path (str, optional): Path to the TensorRT model engine.
-            tokenizer_dir (str, optional): Directory containing the tokenizer files.
-            vocab_file (str, optional): Path to the vocabulary file.
-            temperature (float): Sampling temperature for generation.
-            max_new_tokens (int): Maximum number of tokens to generate.
-            context_window (int): Number of tokens in the model's context window.
-            messages_to_prompt (Callable, optional): Function to convert messages to prompts.
-            completion_to_prompt (Callable, optional): Function to convert completions to prompts.
-            prompt_template: Template for formatting prompts (unused placeholder).
-            callback_manager (CallbackManager, optional): Manager for handling callbacks.
-            generate_kwargs (dict, optional): Additional keyword arguments for generation.
-            model_kwargs (dict, optional): Additional keyword arguments for model setup.
-            use_py_session (bool): Flag to use Python session for execution.
-            add_special_tokens (bool): Flag to add special tokens in prompts.
-            trtLlm_debug_mode (bool): Enable debug mode for TensorRT operations.
-            verbose (bool): Enable verbose output.
+            config (TrtLlmAPIConfig): Configuration object containing initialization parameters.
         """
         self._model = TrtLlm(
-            model_path=model_path,
-            tokenizer_dir=tokenizer_dir,
-            temperature=temperature,
-            max_new_tokens=max_new_tokens,
-            context_window=context_window,
-            vocab_file=vocab_file,  # Previously was set as None mistakenly.
-            use_py_session=use_py_session,
-            add_special_tokens=add_special_tokens,
-            trtLlm_debug_mode=trtLlm_debug_mode
+            model_path=config.model_path,
+            tokenizer_dir=config.tokenizer_dir,
+            temperature=config.temperature,
+            max_new_tokens=config.max_new_tokens,
+            context_window=config.context_window,
+            vocab_file=config.vocab_file,  # Previously was set as None mistakenly.
+            use_py_session=config.use_py_session,
+            add_special_tokens=config.add_special_tokens,
+            trtLlm_debug_mode=config.trtLlm_debug_mode
         )
 
-        self._model_path = model_path
-        self._context_window = context_window
-        self._max_new_tokens = max_new_tokens
+        self._model_path = config.model_path
+        self._context_window = config.context_window
+        self._max_new_tokens = config.max_new_tokens
 
-        model_kwargs = model_kwargs or {}
-        model_kwargs.update({"n_ctx": context_window, "verbose": False})
-        generate_kwargs = generate_kwargs or {}
-        generate_kwargs.update({"temperature": temperature, "max_tokens": max_new_tokens})
+        model_kwargs = config.model_kwargs or {}
+        model_kwargs.update({"n_ctx": config.context_window, "verbose": False})
+        generate_kwargs = config.generate_kwargs or {}
+        generate_kwargs.update({"temperature": config.temperature, "max_tokens": config.max_new_tokens})
 
         super().__init__(
-            model_path=model_path,
-            temperature=temperature,
-            context_window=context_window,
-            max_new_tokens=max_new_tokens,
+            model_path=config.model_path,
+            temperature=config.temperature,
+            context_window=config.context_window,
+            max_new_tokens=config.max_new_tokens,
             messages_to_prompt=None,
-            completion_to_prompt=completion_to_prompt,
-            callback_manager=callback_manager,
+            completion_to_prompt=config.completion_to_prompt,
+            callback_manager=config.callback_manager,
             generate_kwargs=generate_kwargs,
             model_kwargs=model_kwargs,
             verbose=False,
@@ -235,7 +222,7 @@ class TrtLlmAPI(CustomLLM):
         Returns:
             CompletionResponse: Structured response containing the text and metadata.
         """
-        is_formatted = kwargs.pop("formatted", False)
+        kwargs.pop("formatted", False)
         output_txt = self._model.complete(prompt, **kwargs)
         return CompletionResponse(text=output_txt, raw=self.generate_completion_dict(output_txt))
 
