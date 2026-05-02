@@ -116,14 +116,26 @@ export default function FineTuningSection({ modelId }: { modelId: ModelId }) {
             setIsBaseModelDownloadInit(true)
             setIsBaseModeDownloading(true)
         }
-        // TODO: Decide whether to select by default profile or do it when explictly selected
-        // if (modelFineTuningDetails.FineTuningProfileConfigs.length === 1) {
-        //     onProfileSelected(modelFineTuningDetails.FineTuningProfileConfigs[0].profileId)
-        // } else if (modelFineTuningDetails.FineTuningProfileConfigs.length && modelFineTuningDetails.selectedProfileId) {
-        //     if (modelFineTuningDetails.FineTuningProfileConfigs.find(value => value.profileId === modelFineTuningDetails.selectedProfileId)) {
-        //         onProfileSelected(modelFineTuningDetails.selectedProfileId)
-        //     }
-        // }
+        if (event.target.checked) {
+            if (modelFineTuningDetails.FineTuningProfileConfigs.length === 1) {
+                onProfileSelected(
+                    modelFineTuningDetails.FineTuningProfileConfigs[0].profileId
+                )
+            } else if (
+                modelFineTuningDetails.FineTuningProfileConfigs.length &&
+                modelFineTuningDetails.selectedProfileId
+            ) {
+                if (
+                    modelFineTuningDetails.FineTuningProfileConfigs.find(
+                        (value) =>
+                            value.profileId ===
+                            modelFineTuningDetails.selectedProfileId
+                    )
+                ) {
+                    onProfileSelected(modelFineTuningDetails.selectedProfileId)
+                }
+            }
+        }
     }
 
     const onCancelFineTune = () => {
