@@ -22,6 +22,16 @@
 import logging
 import logging.handlers
 import os
+from dataclasses import dataclass
+
+
+@dataclass
+class LoggerConfig:
+    log_level: int = logging.DEBUG
+    log_file: str = None
+    log_format: str = None
+    max_bytes: int = 10485760
+    backup_count: int = 5
 
 class ChatRTXLogger:
     _instance = None
@@ -31,19 +41,20 @@ class ChatRTXLogger:
             cls._instance = super(ChatRTXLogger, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, log_level=logging.DEBUG, log_file=None, log_format=None, max_bytes=10485760, backup_count=5):
+    def __init__(self, config: LoggerConfig = None):
+        config = config or LoggerConfig()
         if hasattr(self, '_initialized') and self._initialized:
             return
 
         self._initialized = True
 
-        if log_format is None:
-            log_format = '%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
+        if config.log_format is None:
+            config.log_format = '%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
 
         self.logger = logging.getLogger("[ChatRTX]")
-        self.logger.setLevel(log_level)
+        self.logger.setLevel(config.log_level)
 
-        formatter = logging.Formatter(log_format)
+        formatter = logging.Formatter(config.log_format)
 
         # Console handler
         console_handler = logging.StreamHandler()
@@ -51,17 +62,17 @@ class ChatRTXLogger:
         self.logger.addHandler(console_handler)
 
         # File handler
-        if log_file:
+        if config.log_file:
 
-            log_dir = os.path.dirname(log_file)
+            log_dir = os.path.dirname(config.log_file)
             if log_dir:
                 os.makedirs(log_dir, exist_ok=True)
 
             # Check if the file exists, and create it if it does not
-            if not os.path.exists(log_file):
-                open(log_file, 'w').close()
+            if not os.path.exists(config.log_file):
+                open(config.log_file, 'w').close()
 
-            file_handler = logging.handlers.RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count)
+            file_handler = logging.handlers.RotatingFileHandler(config.log_file, maxBytes=config.max_bytes, backupCount=config.backup_count)
             file_handler.setFormatter(formatter)
             self.logger.addHandler(file_handler)
 

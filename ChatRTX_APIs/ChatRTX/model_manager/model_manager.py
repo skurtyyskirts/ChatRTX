@@ -25,49 +25,32 @@ import os.path
 import shutil
 from ChatRTX.model_manager.model_manager_util import download_model_by_name, build_engine_by_name, verify_clip_checksum
 from ChatRTX.model_manager.verify_model_install import update_config
-from ChatRTX.logger import ChatRTXLogger
+from ChatRTX.logger import ChatRTXLogger, LoggerConfig
 from ChatRTX.model_manager.config import Config
 
 class ModelManager:
-    """
-    Handles the management of model configurations, including downloading and installing models.
-    """
-
-    # Configuration keys and model directory constants
     CONFIG_KEY = "models"
     SUPPORTED_KEY = "supported"
     MODEL_DIR = "model"
 
     def __init__(self, models_dir, config_path="../config/config.json", sample_data = "../sample_data"):
-        """
-        Initializes the ModelManager class.
-
-        Args:
-            models_dir (str): The directory where models are stored.
-            config_path (str): The path to the configuration file.
-        """
         current_file_dir = os.path.dirname(os.path.abspath(__file__))
         base_config = os.path.join(current_file_dir, "../config/config.json")
         app_config_dir = os.path.join(models_dir, "config")
         app_config_file = os.path.join(app_config_dir, "config.json")
 
-        # Check if app_config_dir exists, if not, create it
         if not os.path.exists(app_config_dir):
             os.makedirs(app_config_dir)
             print(f"Created directory: {app_config_dir}")
 
-        # Check if config.json exists in app_config_dir, if not, copy it from base_config
         if not os.path.exists(app_config_file):
             shutil.copy(base_config, app_config_file)
             print(f"Copied {base_config} to {app_config_file}")
 
-        # check for the sample data
         base_sample_data_dir = os.path.join(current_file_dir, sample_data)
         app_sample_data_dir  = os.path.join(models_dir, "sample_data")
 
-        # Check if app_sample_data_dir exists, if not, create it
         try:
-            # Copy the contents of the sample data directory recursively
             if os.path.exists(base_sample_data_dir):
                 for item in os.listdir(base_sample_data_dir):
                     s = os.path.join(base_sample_data_dir, item)
@@ -88,36 +71,20 @@ class ModelManager:
         update_config(self._model_directory, self.config_path)
         self.config = Config(self.config_path)
 
-        # Expand the paths in the config files
         keys = ['sample_questions/default/dataset_path', 'sample_questions/chinese/dataset_path', 'sample_questions/images/dataset_path',
                 'dataset/path', 'dataset/path_chinese', 'dataset/path_clip', 'dataset/selected_path']
 
         for key in keys:
             expanded_path = self.expand_programdata_path(self.config.get_config(key))
             self.config.write_default_config(key, expanded_path)
-        ChatRTXLogger(log_level=logging.DEBUG, log_file='chatRTX.log')
+        ChatRTXLogger(LoggerConfig(log_level=logging.DEBUG, log_file='chatRTX.log'))
         self._logger = ChatRTXLogger.get_logger()
 
     def expand_programdata_path(self, path):
-        """
-        Expands the %programdata% environment variable in the given path.
-
-        Parameters:
-        path (str): The path containing the %programdata% variable.
-
-        Returns:
-        str: The path with the %programfiles% variable expanded.
-        """
         expanded_path = os.path.expandvars(path)
         return expanded_path
 
     def get_model_info(self):
-        """
-        Retrieves detailed information about all supported models.
-
-        Returns:
-            list: A list of dictionaries containing detailed information about each model.
-        """
         try:
             model_info_list = self.config.get_config('models/supported')
             if not model_info_list:
@@ -154,20 +121,6 @@ class ModelManager:
             return []
 
     def _load_config(self, file_name):
-        """
-        Loads the configuration from the specified file.
-
-        Args:
-            file_name (str): The name of the configuration file.
-
-        Returns:
-            dict: A dictionary containing the supported models information.
-
-        Raises:
-            FileNotFoundError: If the configuration file is not found.
-            ValueError: If there is an error decoding the JSON.
-            Exception: If an unexpected error occurs.
-        """
         try:
             with open(file_name, 'r', encoding='utf8') as file:
                 return json.load(file)[ModelManager.CONFIG_KEY][ModelManager.SUPPORTED_KEY]
@@ -179,12 +132,6 @@ class ModelManager:
             raise Exception(f"An unexpected error occurred: {e}")
 
     def get_model_list(self):
-        """
-        Returns a list of available models with their details.
-
-        Returns:
-            list: A list of dictionaries containing model details.
-        """
         model_details_list = []
         try:
             models = self.config.get_config('models/supported')
@@ -229,15 +176,6 @@ class ModelManager:
             return False
 
     def download_model(self, model_id):
-        """
-        Downloads the specified model.
-
-        Args:
-            model_id (str): The ID of the model to download.
-
-        Returns:
-            bool: True if the model was downloaded successfully, False otherwise.
-        """
         try:
             model_info_list = self.config.get_config('models/supported')
             if not model_info_list:
@@ -266,15 +204,6 @@ class ModelManager:
             return False
 
     def install_model(self, model_id):
-        """
-        Installs the specified model.
-
-        Args:
-            model_id (str): The ID of the model to install.
-
-        Returns:
-            bool: True if the model was installed successfully, False otherwise.
-        """
         try:
             model_info_list = self.config.get_config('models/supported')
             if not model_info_list:
@@ -306,15 +235,6 @@ class ModelManager:
             return False
 
     def is_model_downloaded(self, model_id):
-        """
-        Checks if the specified model is downloaded.
-
-        Args:
-            model_id (str): The ID of the model to check.
-
-        Returns:
-            bool: True if the model is downloaded, False otherwise.
-        """
         try:
             model_info_list = self.config.get_config('models/supported')
             if not model_info_list:
@@ -332,15 +252,6 @@ class ModelManager:
             return False
 
     def is_model_installed(self, model_id):
-        """
-        Checks if the specified model is installed.
-
-        Args:
-            model_id (str): The ID of the model to check.
-
-        Returns:
-            bool: True if the model is installed, False otherwise.
-        """
         try:
             model_info_list = self.config.get_config('models/supported')
             if not model_info_list:
@@ -358,15 +269,6 @@ class ModelManager:
             return False
 
     def delete_model(self, model_id):
-        """
-        Deletes the specified model from the local storage.
-
-        Args:
-            model_id (str): The ID of the model to delete.
-
-        Returns:
-            bool: True if the model was deleted successfully, False otherwise.
-        """
         try:
             model_info_list = self.config.get_config('models/supported')
             if not model_info_list:
@@ -378,17 +280,14 @@ class ModelManager:
                 self._logger.error(f"Model {model_id} not found.")
                 return False
 
-            # Construct the model directory path
             model_dir = os.path.join(self._model_directory, model_id)
 
-            # Remove the model directory and its contents
             if os.path.exists(model_dir):
                 shutil.rmtree(model_dir)
             else:
                 self._logger.error(f"Model directory {model_dir} does not exist.")
                 return False
 
-            # Update the configuration file after deletion
             for model in model_info_list:
                 if model['id'] == model_id:
                     model['downloaded'] = False
