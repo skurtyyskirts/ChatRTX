@@ -160,6 +160,10 @@ def create_parser():
     add_model_arguments(parser)
     add_plugin_arguments(parser)
     add_quantization_and_output_arguments(parser)
+    return parser
+
+def parse_arguments():
+    parser = create_parser()
     args = parser.parse_args()
 
     logger.set_level(args.log_level)
