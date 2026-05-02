@@ -23,7 +23,18 @@ import re
 from collections import OrderedDict
 from pathlib import Path
 
+import base64
+import gc
+import os
+import tiktoken
+import torch
+import tensorrt_llm
+import tensorrt_llm.logger as logger
 from dataclasses import dataclass
+from tensorrt_llm._utils import (str_dtype_to_torch, str_dtype_to_trt, trt_dtype_to_torch)
+from tensorrt_llm.runtime import ModelConfig, SamplingConfig
+from tensorrt_llm.runtime.session import Session, TensorInfo
+from ChatRTX.inference.trtllm.whisper.whisper_utils import log_mel_spectrogram, LogMelSpectrogramArgs
 
 @dataclass
 class GenerateArgs:
@@ -32,20 +43,6 @@ class GenerateArgs:
     eot_id: int
     max_new_tokens: int = 40
     num_beams: int = 1
-
-import torch
-from ChatRTX.inference.trtllm.whisper.whisper_utils import log_mel_spectrogram, LogMelSpectrogramArgs
-import tensorrt_llm
-import tensorrt_llm.logger as logger
-from tensorrt_llm._utils import (str_dtype_to_torch, str_dtype_to_trt,
-                                 trt_dtype_to_torch)
-from tensorrt_llm.runtime import ModelConfig, SamplingConfig
-from tensorrt_llm.runtime.session import Session, TensorInfo
-
-import base64
-import os
-import gc
-import tiktoken
 
 SPECIAL_TOKEN_RE = re.compile(r'<\|.*?\|>')
 
@@ -202,7 +199,6 @@ class WhisperEncoding:
         config_path = engine_dir / 'encoder_config.json'
         with open(config_path, 'r') as f:
             config = json.load(f)
-
 
         dtype = config['builder_config']['precision']
         n_mels = config['builder_config']['n_mels']
