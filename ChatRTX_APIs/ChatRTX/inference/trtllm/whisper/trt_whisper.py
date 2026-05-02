@@ -20,10 +20,11 @@
 # DEALINGS IN THE SOFTWARE.
 import json
 import re
+from dataclasses import dataclass
+from typing import Any, Optional
 from collections import OrderedDict
 from pathlib import Path
 
-from dataclasses import dataclass
 
 @dataclass
 class GenerateArgs:
@@ -406,38 +407,43 @@ class WhisperTRTLLM(object):
         torch.cuda.empty_cache()
         gc.collect()
 
-def decode_audio_file(
-        input_file_path,
-        model,
-        language="english",        
-        dtype='float16',
-        batch_size=1,
-        num_beams=1,
-        normalizer=None,
-        mel_filters_dir=None):
-    if(language == "chinese"):
+
+
+@dataclass
+class DecodeAudioArgs:
+    input_file_path: str
+    model: Any
+    language: str = "english"
+    dtype: str = 'float16'
+    batch_size: int = 1
+    num_beams: int = 1
+    normalizer: Optional[Any] = None
+    mel_filters_dir: Optional[str] = None
+
+def decode_audio_file(args: DecodeAudioArgs):
+    if(args.language == "chinese"):
         text_prefix="<|startoftranscript|><|zh|><|transcribe|><|notimestamps|>"
     else:
         # supporting only chinese and english for now. defaulting to english.
         text_prefix="<|startoftranscript|><|en|><|transcribe|><|notimestamps|>"
     mel, total_duration = log_mel_spectrogram(
-        input_file_path,
+        args.input_file_path,
         LogMelSpectrogramArgs(
-            n_mels=model.n_mels,
+            n_mels=args.model.n_mels,
             device='cuda',
             return_duration=True,
-            mel_filters_dir=mel_filters_dir
+            mel_filters_dir=args.mel_filters_dir
         )
     )
-    mel = mel.type(str_dtype_to_torch(dtype))
+    mel = mel.type(str_dtype_to_torch(args.dtype))
     mel = mel.unsqueeze(0)
     # repeat the mel spectrogram to match the batch size
-    mel = mel.repeat(batch_size, 1, 1)
-    predictions = model.process_batch(mel, text_prefix, num_beams)
+    mel = mel.repeat(args.batch_size, 1, 1)
+    predictions = args.model.process_batch(mel, text_prefix, args.num_beams)
     prediction = predictions[0]
 
     # remove all special tokens in the prediction
     prediction = SPECIAL_TOKEN_RE.sub('', prediction)
-    if normalizer:
-        prediction = normalizer(prediction)
+    if args.normalizer:
+        prediction = args.normalizer(prediction)
     return prediction
