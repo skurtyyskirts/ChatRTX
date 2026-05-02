@@ -149,6 +149,7 @@ def parse_arguments():
     )
     parser.add_argument("--debug_mode", action="store_true")
     args = parser.parse_args()
+
     logger.set_level(args.log_level)
 
     plugins_args = [

@@ -1,11 +1,11 @@
 llama-index==0.10.34
 llama-index-vector-stores-faiss==0.1.2
 llama-index-embeddings-huggingface==0.2.0
-faiss-cpu==1.7.4
+faiss-cpu>=1.8.0
 Flask==2.3.3
 flask-marshmallow==0.15.0
 Flask-Migrate==4.0.4
-numpy==1.24.0
+numpy>=1.24.0,<2.0.0
 pydantic==2.3.0
 pydantic-core==2.6.3
 pydantic-settings==2.0.3
@@ -19,4 +19,3 @@ datasets==2.14.6
 rouge_score~=0.1.2
 docx2txt==0.8
 soundfile==0.12.1
-ctype==7.4.2
