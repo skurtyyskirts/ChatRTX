@@ -247,6 +247,17 @@ export default class ChatBridge {
 
     destroy = () => {
         this.ready = false
-        /** TODO: shut down services */
+        this._clearResponse()
+        this._speechManager?.end()
+        if (this._chatBot && typeof this._chatBot.shutdown === 'function') {
+            this._chatBot
+                .shutdown()
+                .then(() => {
+                    console.log('Services shut down completely.')
+                })
+                .catch((err: any) => {
+                    console.error('Error shutting down services', err)
+                })
+        }
     }
 }
