@@ -28,7 +28,6 @@ from tensorrt_llm.runtime import ModelRunner, ModelRunnerCpp
 from tensorrt_llm.logger import logger
 from ChatRTX.inference.trtllm.utils import (DEFAULT_HF_MODEL_DIRS, load_tokenizer, read_model_name, throttle_generator)
 from ChatRTX.logger import ChatRTXLogger
-from dataclasses import dataclass
 
 @dataclass
 class TrtLlmConfig:
