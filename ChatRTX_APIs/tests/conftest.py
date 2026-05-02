@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 # Stub out heavy optional dependencies that are not available in the CI test env
 _UNAVAILABLE = [
     "ngcsdk",
+    "requests",
     "faiss",
     "torch",
     "tqdm",
