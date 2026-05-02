@@ -23,7 +23,7 @@ from ChatRTX.inference.trtllm.trtllm import TrtLlm, TrtLlmConfig
 from ChatRTX.inference.pytorch.CLIP import ClipInference
 from ChatRTX.llm_prompt_templates import LLMPromptTemplate
 import os, json
-from ChatRTX.logger import ChatRTXLogger
+from ChatRTX.logger import ChatRTXLogger, LoggerConfig
 import logging
 
 class ChatRTX:
@@ -49,21 +49,13 @@ class ChatRTX:
         self._llm = None
 
         # Initialize the logger
-        ChatRTXLogger(log_level=logging.INFO, log_file='ChatRTX.log')
+        ChatRTXLogger(LoggerConfig(log_level=logging.INFO, log_file='ChatRTX.log'))
         self._logger = ChatRTXLogger.get_logger()
         app_config = os.path.join(os.path.dirname(os.path.abspath(__file__)), "./config/app_config.json")
         self._app_config_info = self._load_config(app_config)
 
     def init_llm_model(self, model_id, backend="TRTLLM", **kwqags):
-        """
-        Initialize the language model based on the provided model ID and backend.
-
-        :param model_id: The ID of the model to initialize.
-        :param backend: The backend to use for the model. Default is "TRTLLM".
-        :return: True if initialization is successful, False otherwise.
-        """
         try:
-            # Find the model information in the internal map using the provided model_id
             model_info = next((info for info in self._models_info_map if info["id"] == model_id), None)
             if model_info is None:
                 self._logger.error("Model ID '%s' not found in the configuration.", model_id)
@@ -73,7 +65,6 @@ class ChatRTX:
                 self._logger.error("Unsupported backend '%s'. Currently, only 'TRTLLM' is supported.", backend)
                 raise ValueError(f"Unsupported backend '{backend}'. Currently, only 'TRTLLM' is supported.")
 
-            # Construct paths for model components
             model_path = os.path.join(self._model_directory, model_info["id"], ChatRTX.ENGINE_DIR)
             engine_file_path = os.path.join(model_path, model_info["metadata"].get(ChatRTX.ENGINE_NAME, ""))
             tokenizer_dir = os.path.join(self._model_directory, model_info["id"],
@@ -85,18 +76,15 @@ class ChatRTX:
                                       model_info["prerequisite"]["tokenizer_files"]["vocab_file"]) \
                                                     if (ChatRTX.VOCAB_DIR in model_info["prerequisite"]) else None
 
-            # Log the constructed paths
             self._logger.debug("Model path: %s", model_path)
             self._logger.debug("Engine file path: %s", engine_file_path)
             self._logger.debug("Tokenizer directory: %s", tokenizer_dir)
             self._logger.debug("Vocab file: %s", vocab_file)
 
-            #read the app config file to init the default values
             use_py_session = kwqags['use_py_session'] if 'use_py_session' in kwqags else self._app_config_info['use_py_session']
             add_special_tokens = kwqags['add_special_tokens'] if 'add_special_tokens' in kwqags else self._app_config_info['add_special_tokens']
             trtLlm_debug_mode = kwqags['trtLlm_debug_mode'] if 'trtLlm_debug_mode' in kwqags else self._app_config_info['trtLlm_debug_mode']
 
-            # Initialize the TrtLlm object
             config = TrtLlmConfig(
                 model_path=model_path,
                 tokenizer_dir=tokenizer_dir,
@@ -115,21 +103,12 @@ class ChatRTX:
             return False
 
     def init_clip_model(self, model_id):
-        """
-        Initialize the language model based on the provided model ID and backend.
-
-        :param model_id: The ID of the model to initialize.
-        :param backend: The backend to use for the model. Default is "TRTLLM".
-        :return: True if initialization is successful, False otherwise.
-        """
         try:
-            # Find the model information in the internal map using the provided model_id
             model_info = next((info for info in self._models_info_map if info["id"] == model_id), None)
             if model_info is None:
                 self._logger.error("Model ID '%s' not found in the configuration.", model_id)
                 raise ValueError(f"Model ID '{model_id}' not found in the configuration.")
 
-            # Construct paths for model components
             model_path = os.path.join(self._model_directory, model_info["id"])
 
             self.clip_inference = ClipInference()
@@ -154,45 +133,26 @@ class ChatRTX:
             return False
 
     def generate_response(self, query):
-        """
-        Generate a response for a given query using the loaded language model.
-
-        :param query: The query string for which to generate a response.
-        :return: The generated response.
-        :raises Exception: If no model is loaded or if response generation fails.
-        """
         if self._llm is None:
             self._logger.error("No model is loaded. Please load a model before generating responses")
             raise Exception("No model is loaded. Please load a model before generating responses.")
 
         try:
-            # Create a prompt template and generate the prompt
             prompt_template = LLMPromptTemplate()
             prompt = prompt_template.model_default_template(model=self._llm.get_model_name(), query=query)
-
-            # Generate and return the response using the language model
             return self._llm.complete(prompt)
         except Exception as e:
             self._logger.error(f"Failed to generate the response: Error: {str(e)}")
             raise Exception(f"Failed to generate the response {str(e)}")
 
     def generate_stream_response(self, query):
-        """
-        Generate a streaming response for a given query using the loaded language model.
-
-        :param query: The query string for which to generate a streaming response.
-        :raises Exception: If no model is loaded or if streaming response generation fails.
-        """
         if self._llm is None:
             self._logger.error("No model is loaded. Please load a model before generating responses")
             raise Exception("No model is loaded. Please load a model before generating responses.")
 
         try:
-            # Create a prompt template and generate the prompt
             prompt_template = LLMPromptTemplate()
             prompt = prompt_template.model_default_template(model=self._llm.get_model_name(), query=query)
-
-            # Generate and print the streaming response using the language model
             response_tokens = self._llm.stream_complete(prompt)
             for response in response_tokens:
                 yield response
@@ -202,14 +162,8 @@ class ChatRTX:
             raise Exception(f"Failed to generate the stream response {str(e)}")
 
     def unload_llm(self):
-        """
-        Unload the currently loaded language model, if any.
-
-        :raises Exception: If unloading the model fails.
-        """
         if self._llm is not None:
             try:
-                # Unload the language model
                 self._llm.unload_llm()
                 self._llm = None
                 self._logger.info("Language model unloaded successfully.")
@@ -218,20 +172,6 @@ class ChatRTX:
                 raise Exception(f"Failed to unload the language model: {str(e)}")
 
     def _load_config(self, file_name):
-        """
-        Loads the configuration from the specified file.
-
-        Args:
-            file_name (str): The name of the configuration file.
-
-        Returns:
-            dict: A dictionary containing the supported models information.
-
-        Raises:
-            FileNotFoundError: If the configuration file is not found.
-            ValueError: If there is an error decoding the JSON.
-            Exception: If an unexpected error occurs.
-        """
         try:
             with open(file_name, 'r', encoding='utf8') as file:
                 return json.load(file)

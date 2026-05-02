@@ -23,40 +23,27 @@ from ChatRTX.chatrtx import ChatRTX
 from ChatRTX.model_manager.model_manager import ModelManager
 import logging
 import sys
-from ChatRTX.logger import ChatRTXLogger
+from ChatRTX.logger import ChatRTXLogger, LoggerConfig
 
-# Initialize logger
-ChatRTXLogger(log_level=logging.INFO, log_file='chatRTX.log')
+ChatRTXLogger(LoggerConfig(log_level=logging.INFO, log_file='chatRTX.log'))
 logger = ChatRTXLogger.get_logger()
 
-# Define the directory where models will be downloaded
 model_download_dir = "../model"
-
-# Initialize the model manager with the specified download directory
 model_manager = ModelManager(model_download_dir)
-
-# Get the list of available models and print it
 model_list = model_manager.get_model_list()
 print(f"Model list: {model_list}")
 
-# Define the model ID, get it from the model_list
 model_id = "clip_model"
 
-# Check if the specified model is already downloaded
 if not model_manager.is_model_downloaded(model_id):
-    # Download the model if it is not already downloaded
     status = model_manager.download_model(model_id)
     if not status:
         logging.error(f"Model download failed for the model: {model_id}")
         sys.exit(1)
 
-# Get the information about the model
 model_info = model_manager.get_model_info()
-
-# Initialize the ChatRTX object with the model information and download directory
 chat_rtx = ChatRTX(model_info, model_download_dir)
 
-# Initialize the LLM model with the specified model ID
 status = chat_rtx.init_clip_model(model_id)
 if not status:
     logger.error(f"Failed to load clip the model: {model_id}")
@@ -73,4 +60,3 @@ if not status:
     sys.exit(1)
 answer = chat_rtx.generate_clip_response(input_text=text_query, top_matches_path = input_matched_ouput, min_clip_score = min_clip_score)
 print(answer)
-

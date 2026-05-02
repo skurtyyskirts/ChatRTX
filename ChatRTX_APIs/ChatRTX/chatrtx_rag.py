@@ -27,17 +27,12 @@ from llama_index.vector_stores.faiss import FaissVectorStore
 from llama_index.core.node_parser import SentenceSplitter
 from ChatRTX.llm_prompt_templates import LLMPromptTemplate
 import faiss
-import os
-import json
-import gc
-import torch
-from ChatRTX.logger import ChatRTXLogger
+import os, json
+import gc, torch
+from ChatRTX.logger import ChatRTXLogger, LoggerConfig
 import shutil
 import logging
 class ChatRTXRag:
-    """
-    Manages operations on language models including initialization, and response generation.
-    """
     ENGINE_DIR = "engine"
     ENGINE_NAME = "engine"
     MODEL_DIR = "model"
@@ -46,34 +41,19 @@ class ChatRTXRag:
     VOCAB_FILE_KEY = "vocab_file"
 
     def __init__(self, models_info_map, model_download_dir):
-        """
-        Initialize the ChatRTXRag object.
-
-        :param models_info_map: A list of dictionaries containing model information.
-        """
         self._models_info_map = models_info_map
         self._model_directory = os.path.join(model_download_dir, "models")
         self._llm = None
         self._embedding_model = None
         self._embedding_dim = None
-        ChatRTXLogger(log_level=logging.INFO, log_file='chatRTX.log')
+        ChatRTXLogger(LoggerConfig(log_level=logging.INFO, log_file='chatRTX.log'))
         self._logger = ChatRTXLogger.get_logger()
         self._logger.info("ChatRTX RAG mode initialized with model directory: %s", self._model_directory)
         app_config = os.path.join(os.path.dirname(os.path.abspath(__file__)), "./config/app_config.json")
         self._app_config_info = self._load_config(app_config)
 
     def init_llamaIndex_llm(self, model_id, backend="TRTLLM", **kwargs):
-        """
-        Initialize the LlamaIndex language model based on the provided model ID and backend.
-
-        :param model_id: The ID of the model to initialize.
-        :param backend: The backend to use for the model. Default is "TRTLLM".
-        :return: True if initialization is successful, False otherwise.
-        :raises ValueError: If the model ID is not found or the backend is unsupported.
-        """
-
         try:
-            # Find the model information in the internal map using the provided model_id
             model_info = next((info for info in self._models_info_map if info["id"] == model_id), None)
             if model_info is None:
                 raise ValueError(f"Model ID '{model_id}' not found in the configuration.")
@@ -96,8 +76,6 @@ class ChatRTXRag:
             self._logger.debug("Tokenizer directory: %s", tokenizer_dir)
             self._logger.debug("Vocab file: %s", vocab_file)
 
-            #if not all([os.path.exists(path) for path in [engine_file_path, tokenizer_dir, vocab_file]]):
-            #    raise FileNotFoundError("Required model components are missing.")
             use_py_session = kwargs['use_py_session'] if 'use_py_session' in kwargs else self._app_config_info['use_py_session']
             add_special_tokens = kwargs['add_special_tokens'] if 'add_special_tokens' in kwargs else self._app_config_info['add_special_tokens']
             trtLlm_debug_mode = kwargs['trtLlm_debug_mode'] if 'trtLlm_debug_mode' in kwargs else self._app_config_info['trtLlm_debug_mode']
@@ -125,12 +103,6 @@ class ChatRTXRag:
             return False
 
     def set_embedding_model(self, model_name, dim):
-        """
-        Set the embedding model for the language model.
-
-        :param model_name: The name of the embedding model.
-        :param dim: The dimension of the embedding model.
-        """
         self._logger.debug("Setting embedding model with name: %s and dimension: %d", model_name, dim)
         try:
             self._embedding_model = HuggingFaceEmbedding(model_name=model_name)
@@ -139,13 +111,7 @@ class ChatRTXRag:
         except Exception as e:
             self._logger.error("Failed to set embedding model: Error %s", str(e), exc_info=True)
 
-    def set_rag_setting(self, **kwargs): #, chunk_size=1024, chunk_overlap=20, num_output=1024, context_window=3900):
-        """
-        Set the RAG (Retrieval-Augmented Generation) settings for the language model.
-
-        :param llm: The language model object.
-        :param kwargs
-        """
+    def set_rag_setting(self, **kwargs):
         try:
             if self._embedding_model is None and self._embedding_dim is None:
                 self.set_embedding_model(self._app_config_info["embedded_model"], self._app_config_info["embedded_dimension"])
@@ -167,14 +133,6 @@ class ChatRTXRag:
             self._logger.error("Failed to set RAG settings: Error %s", str(e), exc_info=True)
 
     def generate_query_engine(self, folder_path: str, streaming: bool = False, force_rewrite=False):
-        """
-        Generate a query engine for the language model.
-
-        :param folder_path: The path to the folder containing data.
-        :param streaming: Whether to enable streaming mode. Default is False.
-        :param force_rewrite: Whether to forcefully rewrite existing data. Default is False.
-        :return: The query engine object.
-        """
         try:
             persist_dir = f"{folder_path}_vector_embedding"
             if force_rewrite:
@@ -195,12 +153,10 @@ class ChatRTXRag:
                 gc.collect()
                 documents = self._load_documents(folder_path)
 
-                # Initialize FAISS index and load documents
                 faiss_index = faiss.IndexFlatL2(self._embedding_dim)
                 vector_store = FaissVectorStore(faiss_index=faiss_index)
                 storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
-                # Create and return the query engine
                 index = VectorStoreIndex.from_documents(documents, storage_context=storage_context)
                 index.storage_context.persist(persist_dir=persist_dir)
 
@@ -216,12 +172,6 @@ class ChatRTXRag:
             raise Exception("Failed to generate the llama-index query engine")
 
     def _load_documents(self, folder_path):
-        """
-        Load documents from the specified folder path.
-
-        :param folder_path: The path to the folder containing data.
-        :return: A list of loaded documents.
-        """
         try:
             if os.path.exists(folder_path) and os.listdir(folder_path):
                 def file_metadata(x):
@@ -238,11 +188,6 @@ class ChatRTXRag:
         return documents
 
     def delete_persist_dir(self, persist_dir):
-        """
-        Delete the persistence directory.
-
-        :param persist_dir: The path to the persistence directory.
-        """
         if os.path.exists(persist_dir) and os.path.isdir(persist_dir):
             try:
                 shutil.rmtree(persist_dir)
@@ -252,13 +197,6 @@ class ChatRTXRag:
                 raise Exception(f"Error occurred while deleting directory: {str(e)}")
 
     def generate_response(self, query, query_engine):
-        """
-        Generate a response for a given query using the provided query engine.
-
-        :param query: The query string for which to generate a response.
-        :param query_engine: The query engine object to use for generating the response.
-        :return: The generated response.
-        """
         self._logger.debug("Generating response for query: %s", query)
         try:
             response = query_engine.query(query)
@@ -271,13 +209,6 @@ class ChatRTXRag:
             raise Exception(f"Failed to generate the response: {str(e)}")
 
     def generate_stream_response(self, query, query_engine):
-        """
-        Generate a streaming response for a given query using the provided query engine.
-
-        :param query: The query string for which to generate a streaming response.
-        :param query_engine: The query engine object to use for generating the streaming response.
-        :yields: Tokens and source nodes from the streaming response.
-        """
         try:
             response = query_engine.query(query)
             return response
@@ -286,15 +217,9 @@ class ChatRTXRag:
             raise Exception(f"Failed to generate the stream response: {str(e)}")
 
     def unload_llm(self):
-        """
-        Unload the currently loaded language model, if any.
-
-        :raises Exception: If unloading the model fails.
-        """
         self._logger.debug("Unloading LLM model.")
         if self._llm is not None:
             try:
-                # Unload the language model
                 self._llm.unload_llm()
                 self._llm = None
             except Exception as e:
@@ -304,20 +229,6 @@ class ChatRTXRag:
             self._logger.warning("No LLM model loaded to unload.")
 
     def _load_config(self, file_name):
-        """
-        Loads the configuration from the specified file.
-
-        Args:
-            file_name (str): The name of the configuration file.
-
-        Returns:
-            dict: A dictionary containing the supported models information.
-
-        Raises:
-            FileNotFoundError: If the configuration file is not found.
-            ValueError: If there is an error decoding the JSON.
-            Exception: If an unexpected error occurs.
-        """
         try:
             with open(file_name, 'r', encoding='utf8') as file:
                 return json.load(file)
