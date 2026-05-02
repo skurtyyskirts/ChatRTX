@@ -226,7 +226,7 @@ class Backend:
                     yield partial_response
 
                 elif len(response.source_nodes) == 0:
-                    yield "Problem generating response: Data source may be empty or unsupported – Ensure dataset compatibility with the AI model. Alternatively, try ‘Chat with AI model data’."
+                    yield "Problem generating response: Data source may be empty or unsupported – Ensure dataset compatibility with the AI model. Alternatively, try 'Chat with AI model data'."
 
                 else:
                     raise ValueError(f"Invalid Node values")
