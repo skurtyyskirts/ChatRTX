@@ -22,11 +22,40 @@
 import gc
 import torch
 import tensorrt_llm
-from typing import Any, Optional
+from typing import Any, Optional, List
+from dataclasses import dataclass, field
 from tensorrt_llm.runtime import ModelRunner, ModelRunnerCpp
 from tensorrt_llm.logger import logger
 from ChatRTX.inference.trtllm.utils import (DEFAULT_HF_MODEL_DIRS, load_tokenizer, read_model_name, throttle_generator)
 from ChatRTX.logger import ChatRTXLogger
+from dataclasses import dataclass
+
+@dataclass
+class TrtLlmConfig:
+    model_path: Optional[str] = None
+    tokenizer_dir: Optional[str] = None
+    vocab_file: Optional[str] = None
+    temperature: float = 0.1
+    max_new_tokens: int = 100
+    context_window: int = 2048
+    use_py_session: bool = True
+    add_special_tokens: bool = False
+    trtLlm_debug_mode: bool = False
+
+
+
+@dataclass
+class ParseInputConfig:
+    tokenizer: Any
+    input_text: Optional[List[str]] = None
+    prompt_template: Optional[Any] = None
+    input_file: Optional[str] = None
+    add_special_tokens: bool = False
+    max_input_length: int = 4096
+    pad_id: Optional[int] = None
+    num_prepend_vtokens: List[int] = field(default_factory=list)
+    model_name: Optional[str] = None
+    model_version: Optional[str] = None
 
 class TrtLlm():
     """
@@ -39,24 +68,16 @@ class TrtLlm():
 
     def __init__(
             self,
-            model_path: Optional[str] = None,
-            tokenizer_dir: Optional[str] = None,
-            vocab_file: Optional[str] = None,
-            temperature: float = 0.1,
-            max_new_tokens: int = 100,  # Your default value for max_new_tokens
-            context_window: int = 2048,  # Your default value for context_window
-            use_py_session=True,
-            add_special_tokens=False,
-            trtLlm_debug_mode=False
+            config: TrtLlmConfig
     ) -> None:
-        self._model_name, self._model_version = read_model_name(model_path)
-        self._max_input_tokens=context_window
-        self._add_special_tokens=add_special_tokens
-        self._max_new_tokens = max_new_tokens
-        self._temperature = temperature
+        self._model_name, self._model_version = read_model_name(config.model_path)
+        self._max_input_tokens = config.context_window
+        self._add_special_tokens = config.add_special_tokens
+        self._max_new_tokens = config.max_new_tokens
+        self._temperature = config.temperature
         self._logger = ChatRTXLogger.get_logger()
         try:
-            if tokenizer_dir is None:
+            if config.tokenizer_dir is None:
                 logger.warning(
                     "tokenizer_dir is not specified. Try to infer from model_name, but this may be incorrect."
                 )
@@ -65,30 +86,32 @@ class TrtLlm():
                     tokenizer_dir = 'gpt2'
                 else:
                     tokenizer_dir = DEFAULT_HF_MODEL_DIRS[self._model_name]
+            else:
+                tokenizer_dir = config.tokenizer_dir
 
             self._tokenizer, self._pad_id, self._end_id = load_tokenizer(
                 tokenizer_dir=tokenizer_dir,
-                vocab_file=vocab_file,
+                vocab_file=config.vocab_file,
                 model_name=self._model_name,
                 model_version=self._model_version,
                 #tokenizer_type=args.tokenizer_type,
             )
 
-            runner_cls = ModelRunner if use_py_session else ModelRunnerCpp
+            runner_cls = ModelRunner if config.use_py_session else ModelRunnerCpp
 
-            self._logger.debug(f"Trt-llm mode debug mode: {trtLlm_debug_mode}")
+            self._logger.debug(f"Trt-llm mode debug mode: {config.trtLlm_debug_mode}")
 
             runtime_rank = tensorrt_llm.mpi_rank()
-            runner_kwargs = dict(engine_dir=model_path,
+            runner_kwargs = dict(engine_dir=config.model_path,
                                  rank=runtime_rank,
-                                 debug_mode=trtLlm_debug_mode,
+                                 debug_mode=config.trtLlm_debug_mode,
                                  lora_ckpt_source='hf')
-            if not use_py_session:
+            if not config.use_py_session:
                 runner_kwargs.update(free_gpu_memory_fraction = 0.5)
             self._model = runner_cls.from_dir(**runner_kwargs)
         except Exception as e:
-            self._logger.error(f"Fail to create TRT-LLM object for model: {model_path}. \n Error: {str(e)}")
-            raise Exception(f"Fail to create TRT-LLM object for model: {model_path}. \n Error: {str(e)}")
+            self._logger.error(f"Fail to create TRT-LLM object for model: {config.model_path}. \n Error: {str(e)}")
+            raise Exception(f"Fail to create TRT-LLM object for model: {config.model_path}. \n Error: {str(e)}")
 
     def get_model_name(self):
         if self._model is not None:
@@ -127,44 +150,38 @@ class TrtLlm():
         output_ids = output_ids.reshape((-1, output_ids.size(2)))
         return output_text, output_ids
 
-    def parse_input(self,
-                    tokenizer,
-                    input_text=None,
-                    prompt_template=None,
-                    input_file=None,
-                    add_special_tokens=False,
-                    max_input_length=4096,
-                    pad_id=None,
-                    num_prepend_vtokens=[],
-                    model_name=None,
-                    model_version=None):
+    def parse_input(self, config: ParseInputConfig):
+        pad_id = config.pad_id
         if pad_id is None:
-            pad_id = tokenizer.pad_token_id
-        if model_name == 'GemmaForCausalLM':
-            add_special_tokens=True
+            pad_id = config.tokenizer.pad_token_id
+
+        add_special_tokens = config.add_special_tokens
+        if config.model_name == 'GemmaForCausalLM':
+            add_special_tokens = True
+
         batch_input_ids = []
-        if input_file is None:
-            for curr_text in input_text:
-                if prompt_template is not None:
-                    curr_text = prompt_template.format(input_text=curr_text)
-                input_ids = tokenizer.encode(curr_text,
+        if config.input_file is None:
+            for curr_text in config.input_text:
+                if config.prompt_template is not None:
+                    curr_text = config.prompt_template.format(input_text=curr_text)
+                input_ids = config.tokenizer.encode(curr_text,
                                              add_special_tokens=add_special_tokens,
                                              truncation=True,
-                                             max_length=max_input_length)
+                                             max_length=config.max_input_length)
                 batch_input_ids.append(input_ids)
 
-        if num_prepend_vtokens:
-            assert len(num_prepend_vtokens) == len(batch_input_ids)
-            base_vocab_size = tokenizer.vocab_size - len(
-                tokenizer.special_tokens_map.get('additional_special_tokens', []))
-            for i, length in enumerate(num_prepend_vtokens):
+        if config.num_prepend_vtokens:
+            assert len(config.num_prepend_vtokens) == len(batch_input_ids)
+            base_vocab_size = config.tokenizer.vocab_size - len(
+                config.tokenizer.special_tokens_map.get('additional_special_tokens', []))
+            for i, length in enumerate(config.num_prepend_vtokens):
                 batch_input_ids[i] = list(
                     range(base_vocab_size,
                           base_vocab_size + length)) + batch_input_ids[i]
 
-        if model_name == 'ChatGLMForCausalLM' and model_version == 'glm':
+        if config.model_name == 'ChatGLMForCausalLM' and config.model_version == 'glm':
             for ids in batch_input_ids:
-                ids.append(tokenizer.sop_token_id)
+                ids.append(config.tokenizer.sop_token_id)
 
         batch_input_ids = [
             torch.tensor(x, dtype=torch.int32) for x in batch_input_ids
@@ -181,7 +198,7 @@ class TrtLlm():
         try:
             self._logger.debug(f"Prompt send to LLM \n: {prompt}")
             input_text = [prompt]
-            batch_input_ids = self.parse_input(
+            config = ParseInputConfig(
                                     tokenizer=self._tokenizer,
                                     input_text=input_text,
                                     prompt_template=None,
@@ -189,9 +206,10 @@ class TrtLlm():
                                     add_special_tokens=self._add_special_tokens,
                                     max_input_length=self._max_input_tokens,
                                     pad_id=self._pad_id,
-                                    num_prepend_vtokens=None,
-                                    model_name= self._model_name,
+                                    num_prepend_vtokens=[],
+                                    model_name=self._model_name,
                                     model_version=self._model_version)
+            batch_input_ids = self.parse_input(config)
             input_lengths = [x.size(0) for x in batch_input_ids]
 
             self._logger.debug(f"Number of token : {input_lengths[0]}")
@@ -240,7 +258,7 @@ class TrtLlm():
         self._logger.debug(f"Prompt send to LLM \n: {prompt}")
         input_text = [prompt]
         try:
-            batch_input_ids = self.parse_input(
+            config = ParseInputConfig(
                                     tokenizer=self._tokenizer,
                                     input_text=input_text,
                                     prompt_template=None,
@@ -248,9 +266,10 @@ class TrtLlm():
                                     add_special_tokens=self._add_special_tokens,
                                     max_input_length=self._max_input_tokens,
                                     pad_id=self._pad_id,
-                                    num_prepend_vtokens=None,
-                                    model_name= self._model_name,
+                                    num_prepend_vtokens=[],
+                                    model_name=self._model_name,
                                     model_version=self._model_version)
+            batch_input_ids = self.parse_input(config)
             input_lengths = [x.size(0) for x in batch_input_ids]
             self._logger.debug(f"Number of token : {input_lengths[0]}")
 

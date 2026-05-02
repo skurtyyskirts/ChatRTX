@@ -25,7 +25,7 @@ import gc
 import time
 import uuid
 import torch
-from ChatRTX.inference.trtllm.trtllm import TrtLlm
+from ChatRTX.inference.trtllm.trtllm import TrtLlm, TrtLlmConfig
 from llama_index.core.bridge.pydantic import Field, PrivateAttr
 from llama_index.core.base.llms.types import (
     ChatMessage,
@@ -43,7 +43,6 @@ from llama_index.core.callbacks import CallbackManager
 from llama_index.core.constants import DEFAULT_CONTEXT_WINDOW, DEFAULT_NUM_OUTPUTS
 from llama_index.core.llms.callbacks import llm_chat_callback, llm_completion_callback
 from llama_index.core.llms.custom import CustomLLM
-
 
 @dataclass
 class TrtLlmAPIConfig:
@@ -96,17 +95,18 @@ class TrtLlmAPI(CustomLLM):
         Args:
             config (TrtLlmAPIConfig): Configuration object containing initialization parameters.
         """
-        self._model = TrtLlm(
+        trt_config = TrtLlmConfig(
             model_path=config.model_path,
             tokenizer_dir=config.tokenizer_dir,
             temperature=config.temperature,
             max_new_tokens=config.max_new_tokens,
             context_window=config.context_window,
-            vocab_file=config.vocab_file,  # Previously was set as None mistakenly.
+            vocab_file=config.vocab_file,
             use_py_session=config.use_py_session,
             add_special_tokens=config.add_special_tokens,
             trtLlm_debug_mode=config.trtLlm_debug_mode
         )
+        self._model = TrtLlm(trt_config)
 
         self._model_path = config.model_path
         self._context_window = config.context_window
@@ -211,18 +211,19 @@ class TrtLlmAPI(CustomLLM):
         return stream_completion_response_to_chat_response(completion_response)
 
     @llm_completion_callback()
-    def complete(self, prompt: str, **kwargs: Any) -> CompletionResponse:
+    def complete(self, prompt: str, formatted: bool = False, **kwargs: Any) -> CompletionResponse:
         """
         Generate a completion response from a given prompt.
 
         Args:
             prompt (str): The prompt to process.
+            formatted (bool): Indicates whether the prompt is pre-formatted.
             kwargs (dict): Additional keyword arguments for completion generation.
 
         Returns:
             CompletionResponse: Structured response containing the text and metadata.
         """
-        kwargs.pop("formatted", False)
+
         output_txt = self._model.complete(prompt, **kwargs)
         return CompletionResponse(text=output_txt, raw=self.generate_completion_dict(output_txt))
 
