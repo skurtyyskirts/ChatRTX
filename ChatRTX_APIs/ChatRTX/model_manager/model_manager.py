@@ -291,6 +291,7 @@ class ModelManager:
                 for i in range(len(model_info_list)):
                     if (model_info_list[i]['id'] == model_id):
                         model_info_list[i]['setup_finished'] = True
+                        break
 
                 self.config.write_default_config('models/supported', model_info_list)
                 self.config.write_default_config('models/selected', model_id)
