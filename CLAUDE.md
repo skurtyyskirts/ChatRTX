@@ -6,29 +6,41 @@ NVIDIA ChatRTX: a local AI chatbot running on RTX GPUs using TensorRT-LLM.
 
 ```
 ChatRTX_APIs/         Python APIs — model loading, inference, RAG pipeline
+ChatRTX_APIs/tests/   Unit tests for the Python APIs
 ChatRTX_App/
-  app_launch.py       Main application entry point
-  app_launch.bat      Windows launcher
-  ChatRTXUI/          Web-based front-end
+  app_launch.py       Main application entry point (requires built UI)
+  app_launch.bat      Windows launcher (sets correct env vars)
+  ChatRTXUI/          Electron/web front-end
+    engine/tests/     UI engine tests
   requirements.txt    Python dependencies
   pyproject.toml      Poetry project config
-setup.cfg             Package config
+setup.cfg             Package config (includes flake8 config)
 3rd_party_license.txt Third-party license attributions
 ```
 
 ## Entry Point
 
-`ChatRTX_App/app_launch.py` — sets up environment and starts the app and UI server.
+`ChatRTX_App/app_launch.py` — sets up environment and launches the packaged
+Electron UI. Requires the UI to be built first (see Run below).
 
 ## Run
 
+The Electron UI must be built before `app_launch.py` will work:
+
 ```cmd
-cd ChatRTX_App
-pip install -r requirements.txt
+cd ChatRTX_App\ChatRTXUI
+npm install
+npm run build-electron
+cd ..
 python app_launch.py
 ```
 
-Or use `ChatRTX_App/app_launch.bat` on Windows (recommended — sets correct env vars).
+For day-to-day development on Windows, use the batch launcher which sets
+all required env vars:
+```cmd
+cd ChatRTX_App
+app_launch.bat
+```
 
 ## Key APIs (`ChatRTX_APIs/`)
 
@@ -45,4 +57,12 @@ Or use `ChatRTX_App/app_launch.bat` on Windows (recommended — sets correct env
 
 ## Testing
 
-No test suite currently. Integration testing is manual via the UI at `http://localhost:<port>`.
+```bash
+# API unit tests:
+pytest ChatRTX_APIs/tests/ -v
+
+# UI engine tests:
+pytest ChatRTX_App/ChatRTXUI/engine/tests/ -v
+```
+
+End-to-end testing of the full UI is manual via the browser at `http://localhost:<port>`.

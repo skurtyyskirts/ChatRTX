@@ -1,6 +1,7 @@
 # WebDriverAgent Expiry Detection
 
 > Tracking issue: skurtyyskirts/TombRaiderLegendRTX-#107
+> (Cross-repo reference: TRL tracker is used as the project-wide issue hub.)
 
 ## Problem
 
@@ -10,12 +11,12 @@ touch events never reach the device.
 
 ## Detection Strategy
 
-### 1. Parse WDA Build Date from Binary
+### 1. Parse WDA Build Date from Info.plist
 
 WDA embeds a build timestamp in its `Info.plist`:
 
 ```python
-import subprocess, datetime, plistlib, pathlib
+import datetime, plistlib, pathlib
 
 def get_wda_build_date(wda_app_path: str) -> datetime.datetime | None:
     plist_path = pathlib.Path(wda_app_path) / "Info.plist"
@@ -35,13 +36,19 @@ def get_wda_build_date(wda_app_path: str) -> datetime.datetime | None:
 
 ```python
 def check_wda_expiry(wda_app_path: str) -> tuple[bool, int]:
-    """Returns (is_expired, days_remaining). days_remaining < 0 means expired."""
+    """Returns (is_expired, days_remaining).
+
+    is_expired is True once the 7-day validity window has passed.
+    days_remaining is 0 on the expiry day and never negative.
+    """
     build_date = get_wda_build_date(wda_app_path)
     if build_date is None:
         return False, 7  # unknown — assume ok
     expiry_date = build_date + datetime.timedelta(days=7)
-    days_remaining = (expiry_date - datetime.datetime.now()).days
-    return days_remaining <= 0, max(days_remaining, 0)
+    delta = expiry_date - datetime.datetime.now()
+    is_expired = delta.total_seconds() <= 0
+    days_remaining = max(int(delta.total_seconds() // 86400), 0)
+    return is_expired, days_remaining
 ```
 
 ### 3. UI Warning Trigger
@@ -66,4 +73,4 @@ Show hard error when `is_expired`:
 2. Open Sideloadly (Windows/macOS), AltStore, or Xcode
 3. Sideload `WebDriverAgentRunner.ipa` with your Apple ID
 4. Trust the developer certificate on the device: Settings → General → VPN & Device Management
-5. Restart the iOS Mirror session
+5. Restart the session
