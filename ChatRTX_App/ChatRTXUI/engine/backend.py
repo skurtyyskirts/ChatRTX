@@ -12,7 +12,7 @@ import threading
 import random
 from ResponseUtility import getLocalLinksMarkdown, getImagesMarkdown
 from pynvml import nvmlDeviceGetHandleByIndex, nvmlDeviceGetMemoryInfo
-from ChatRTX.inference.trtllm.whisper.trt_whisper import WhisperTRTLLM, decode_audio_file
+from ChatRTX.inference.trtllm.whisper.trt_whisper import WhisperTRTLLM, decode_audio_file, DecodeAudioArgs
 from ChatRTX.inference.trtllm.whisper.whisper_utils import process_input_audio
 import ctypes
 
@@ -332,15 +332,6 @@ class Backend:
     def set_active_model(self, model_id):
         try:
             self.chatrtx.unload_llm()
-            # if model is clip and mode is Mode.AI than we need to make sure that we change the mode to RAG before loading the clip model as clip does not suppoty AI mode
-            """
-            if model_id == self.CLIP_MODEL and self.chatrtx_mode == Mode.AI:
-                status  = self.set_chatrtx_mode(Mode.RAG)
-                if status:
-                    status = self.model_manager.update_active_model(model_id)
-                    return status
-            """
-            # update the active model before calling ChatRTX function to load new model
             self.active_model = model_id
             status = True
             if model_id == self.CLIP_MODEL and self.chatrtx_mode == Mode.AI:
@@ -361,7 +352,6 @@ class Backend:
 
             if status:
                 status = self.model_manager.update_active_model(model_id)
-
 
             return status
         except Exception as e:
@@ -399,8 +389,9 @@ class Backend:
         # Check and wait until model is loaded before running it.
         checks_for_model_loading = 40
         sleep_time = 0.2
+
         loaded = self.whisper_model_loaded.wait(timeout=checks_for_model_loading * sleep_time)
-        assert loaded, f"Whisper model loading not finished even after {(checks_for_model_loading*sleep_time)} seconds"
+        assert loaded, f"Whisper model loading not finished even after {checks_for_model_loading * sleep_time} seconds"
         if not loaded:
             return ""
 
@@ -410,7 +401,7 @@ class Backend:
         if self.active_model == "chatglm3_6b_AWQ_int4":
             self._logger.info(f"chinese model selected")
             language = "chinese"
-        transcription = decode_audio_file( new_file_path, self.whisper_model, language=language, mel_filters_dir=asr_assets_path)
+        transcription = decode_audio_file(DecodeAudioArgs(input_file_path=new_file_path, model=self.whisper_model, language=language, mel_filters_dir=asr_assets_path))
 
         if self.whisper_model is not None:        
             self.whisper_model.unload_model()
