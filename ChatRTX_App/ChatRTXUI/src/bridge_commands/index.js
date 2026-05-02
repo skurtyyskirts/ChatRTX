@@ -21,7 +21,6 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-
 const { pySetup } = require('./setup')
 
 async function initializeBridgeCommands(isPackaged) {

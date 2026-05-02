@@ -23,19 +23,28 @@ import re
 from collections import OrderedDict
 from pathlib import Path
 
+import base64
+import gc
+import os
+import tiktoken
 import torch
-from ChatRTX.inference.trtllm.whisper.whisper_utils import log_mel_spectrogram, LogMelSpectrogramArgs
 import tensorrt_llm
 import tensorrt_llm.logger as logger
-from tensorrt_llm._utils import (str_dtype_to_torch, str_dtype_to_trt,
-                                 trt_dtype_to_torch)
+from dataclasses import dataclass
+from tensorrt_llm._utils import (str_dtype_to_torch, str_dtype_to_trt, trt_dtype_to_torch)
 from tensorrt_llm.runtime import ModelConfig, SamplingConfig
 from tensorrt_llm.runtime.session import Session, TensorInfo
+from ChatRTX.inference.trtllm.whisper.whisper_utils import log_mel_spectrogram, LogMelSpectrogramArgs
 
-import base64
-import os
-import gc
-import tiktoken
+@dataclass
+class GenerateArgs:
+    decoder_input_ids: 'torch.Tensor'
+    encoder_outputs: 'torch.Tensor'
+    eot_id: int
+    max_new_tokens: int = 40
+    num_beams: int = 1
+
+SPECIAL_TOKEN_RE = re.compile(r'<\|.*?\|>')
 
 LANGUAGES = {
     "en": "english",
@@ -191,7 +200,6 @@ class WhisperEncoding:
         with open(config_path, 'r') as f:
             config = json.load(f)
 
-
         dtype = config['builder_config']['precision']
         n_mels = config['builder_config']['n_mels']
         num_languages = config['builder_config']['num_languages']
@@ -289,12 +297,12 @@ class WhisperDecoding:
 
         return decoder_generation_session
 
-    def generate(self,
-                 decoder_input_ids,
-                 encoder_outputs,
-                 eot_id,
-                 max_new_tokens=40,
-                 num_beams=1):
+    def generate(self, args: GenerateArgs):
+        decoder_input_ids = args.decoder_input_ids
+        encoder_outputs = args.encoder_outputs
+        eot_id = args.eot_id
+        max_new_tokens = args.max_new_tokens
+        num_beams = args.num_beams
         encoder_input_lengths = torch.tensor(
             [encoder_outputs.shape[1] for x in range(encoder_outputs.shape[0])],
             dtype=torch.int32,
@@ -374,11 +382,14 @@ class WhisperTRTLLM(object):
         decoder_input_ids = prompt_id.repeat(batch_size, 1)
 
         encoder_output = self.encoder.get_audio_features(mel)
-        output_ids = self.decoder.generate(decoder_input_ids,
-                                           encoder_output,
-                                           self.eot_id,
-                                           max_new_tokens=96,
-                                           num_beams=num_beams)
+        generate_args = GenerateArgs(
+            decoder_input_ids=decoder_input_ids,
+            encoder_outputs=encoder_output,
+            eot_id=self.eot_id,
+            max_new_tokens=96,
+            num_beams=num_beams
+        )
+        output_ids = self.decoder.generate(generate_args)
         texts = []
         for i in range(len(output_ids)):
             text = self.tokenizer.decode(output_ids[i][0]).strip()
@@ -422,7 +433,7 @@ def decode_audio_file(
     prediction = predictions[0]
 
     # remove all special tokens in the prediction
-    prediction = re.sub(r'<\|.*?\|>', '', prediction)
+    prediction = SPECIAL_TOKEN_RE.sub('', prediction)
     if normalizer:
         prediction = normalizer(prediction)
     return prediction
