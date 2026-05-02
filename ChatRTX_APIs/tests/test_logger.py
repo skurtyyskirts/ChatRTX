@@ -6,9 +6,15 @@ from ChatRTX.logger import ChatRTXLogger
 
 @pytest.fixture(autouse=True)
 def reset_logger_singleton():
-    """Reset the ChatRTXLogger singleton between tests."""
+    """Reset the ChatRTXLogger singleton and clear all handlers between tests."""
     ChatRTXLogger._instance = None
     yield
+    # Close and remove handlers from the underlying logging.Logger so they
+    # don't accumulate across tests (the logging module caches loggers globally).
+    underlying = logging.getLogger("[ChatRTX]")
+    for handler in underlying.handlers[:]:
+        handler.close()
+        underlying.removeHandler(handler)
     ChatRTXLogger._instance = None
 
 

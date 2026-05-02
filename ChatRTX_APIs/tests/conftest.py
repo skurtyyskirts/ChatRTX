@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Stub out heavy optional dependencies that are not available in the CI test env
 _UNAVAILABLE = [
+    # Third-party packages not installed in the CI test environment
     "ngcsdk",
     "requests",
     "faiss",
@@ -19,10 +20,6 @@ _UNAVAILABLE = [
     "llama_index.vector_stores",
     "llama_index.vector_stores.faiss",
     "llama_index.core.node_parser",
-    "ChatRTX.inference.trtllm.trtllm",
-    "ChatRTX.inference.pytorch.CLIP",
-    "ChatRTX.rags.llama_index.trtllm_api",
-    "ChatRTX.inference.trtllm.utils",
 ]
 for _mod in _UNAVAILABLE:
     if _mod not in sys.modules:

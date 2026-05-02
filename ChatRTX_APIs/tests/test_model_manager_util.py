@@ -53,16 +53,28 @@ class TestParseDownloadStatus:
         assert status == "COMPLETED"
         assert path == "/tmp/resource"
 
-    def test_returns_completed_with_no_matching_lines(self):
-        # parse_download_status always returns "COMPLETED" regardless of content
+    def test_returns_failed_with_no_status_line(self):
         status, path = parse_download_status("some unrelated output")
-        assert status == "COMPLETED"
+        assert status == "FAILED"
         assert path is None
 
-    def test_empty_output(self):
+    def test_returns_failed_on_empty_output(self):
         status, path = parse_download_status("")
-        assert status == "COMPLETED"
+        assert status == "FAILED"
         assert path is None
+
+    def test_returns_failed_when_status_line_not_completed(self):
+        output = "Download status: Download Status: Failed\nSome other line"
+        status, path = parse_download_status(output)
+        assert status == "FAILED"
+        assert path is None
+
+    def test_path_extracted_even_on_failed_status(self):
+        # model path may be present even if status indicates failure
+        output = "Downloaded local path model: /tmp/partial"
+        status, path = parse_download_status(output)
+        assert status == "FAILED"
+        assert path == "/tmp/partial"
 
 
 class TestMoveFiles:
