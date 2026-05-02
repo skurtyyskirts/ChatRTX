@@ -53,7 +53,7 @@ def serialize_engine(engine, path):
     logger.info(f'Engine serialized. Total time: {t}')
 
 
-def parse_arguments():
+def create_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--world_size',
                         type=int,
@@ -156,6 +156,11 @@ def parse_arguments():
         'By default, we use dtype for KV cache. int8_kv_cache chooses int8 quantization for KV'
     )
     parser.add_argument('--debug_mode', action='store_true')
+    return parser
+
+
+def parse_arguments():
+    parser = create_parser()
     args = parser.parse_args()
     logger.set_level(args.log_level)
 
