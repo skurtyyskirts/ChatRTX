@@ -19,9 +19,8 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 from setuptools import setup, find_packages
-from setuptools.command.install import install
 import os
-import subprocess
+import sys
 
 def parse_requirements(filename):
     with open(filename, 'r') as file:
