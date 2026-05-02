@@ -8,12 +8,12 @@ import sys, os
 from pathlib import Path
 from enum import Enum
 import time
+import threading
 import random
 from ResponseUtility import getLocalLinksMarkdown, getImagesMarkdown
-from pynvml import nvmlInit, nvmlDeviceGetHandleByIndex, nvmlDeviceGetMemoryInfo
+from pynvml import nvmlDeviceGetHandleByIndex, nvmlDeviceGetMemoryInfo
 from ChatRTX.inference.trtllm.whisper.trt_whisper import WhisperTRTLLM, decode_audio_file, DecodeAudioArgs
 from ChatRTX.inference.trtllm.whisper.whisper_utils import process_input_audio
-import time
 import ctypes
 
 class Mode(Enum):
@@ -48,7 +48,7 @@ class Backend:
 
         self.current_data_dir = dataset_dir
         self.selected_ChatGLM= False
-        self.whisper_model_loaded = False
+        self.whisper_model_loaded = threading.Event()
         self.whisper_model = None
         self.enable_asr = False
 
@@ -384,7 +384,7 @@ class Backend:
             del self.whisper_model
             self.whisper_model = None
         self.whisper_model = WhisperTRTLLM(asr_engine_path, assets_dir=asr_assets_path)
-        self.whisper_model_loaded = True
+        self.whisper_model_loaded.set()
         self._logger.info(f"init asr backend done")
         return True
     
@@ -398,13 +398,10 @@ class Backend:
         
         # Check and wait until model is loaded before running it.
         checks_for_model_loading = 40
-        checks_left_for_model_loading = checks_for_model_loading
         sleep_time = 0.2
-        while checks_left_for_model_loading>0 and not self.whisper_model_loaded:
-            time.sleep(sleep_time)
-            checks_left_for_model_loading -= 1
-        assert checks_left_for_model_loading>0, f"Whisper model loading not finished even after {(checks_for_model_loading*sleep_time)} seconds"
-        if checks_left_for_model_loading == 0:
+        loaded = self.whisper_model_loaded.wait(timeout=checks_for_model_loading * sleep_time)
+        assert loaded, f"Whisper model loading not finished even after {(checks_for_model_loading*sleep_time)} seconds"
+        if not loaded:
             return ""
 
         new_file_path = process_input_audio(audio_path)
@@ -419,7 +416,7 @@ class Backend:
             self.whisper_model.unload_model()
             del self.whisper_model
             self.whisper_model = None
-        self.whisper_model_loaded = False
+        self.whisper_model_loaded.clear()
         self._logger.info(f"asr backend transcription done")
         return transcription
 

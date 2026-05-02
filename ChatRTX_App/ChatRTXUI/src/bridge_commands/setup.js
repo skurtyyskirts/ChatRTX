@@ -21,7 +21,6 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-
 const {
     NV_BIN1,
     NV_BIN2,
