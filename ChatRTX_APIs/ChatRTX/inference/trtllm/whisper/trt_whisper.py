@@ -47,6 +47,8 @@ import os
 import gc
 import tiktoken
 
+SPECIAL_TOKEN_RE = re.compile(r'<\|.*?\|>')
+
 LANGUAGES = {
     "en": "english",
     "zh": "chinese",
@@ -430,7 +432,7 @@ def decode_audio_file(
     prediction = predictions[0]
 
     # remove all special tokens in the prediction
-    prediction = re.sub(r'<\|.*?\|>', '', prediction)
+    prediction = SPECIAL_TOKEN_RE.sub('', prediction)
     if normalizer:
         prediction = normalizer(prediction)
     return prediction
