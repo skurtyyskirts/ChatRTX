@@ -19,6 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 import os
+from dataclasses import dataclass
 from functools import lru_cache
 from typing import Optional, Union
 
@@ -95,13 +96,17 @@ def mel_filters(device,
         return torch.from_numpy(f[f"mel_{n_mels}"]).to(device)
 
 
+@dataclass
+class LogMelSpectrogramArgs:
+    n_mels: int
+    padding: int = 0
+    device: Optional[Union[str, torch.device]] = None
+    return_duration: bool = False
+    mel_filters_dir: Optional[str] = None
+
 def log_mel_spectrogram(
     audio: Union[str, np.ndarray, torch.Tensor],
-    n_mels: int,
-    padding: int = 0,
-    device: Optional[Union[str, torch.device]] = None,
-    return_duration: bool = False,
-    mel_filters_dir: str = None,
+    args: LogMelSpectrogramArgs
 ):
     """
     Compute the log-Mel spectrogram of
@@ -130,7 +135,7 @@ def log_mel_spectrogram(
             if audio.endswith('.wav'):
                 audio, _ = load_audio_wav_format(audio)
             else:
-                audio = load_audio(audio)
+                audio, _ = load_audio_wav_format(audio)
         assert isinstance(audio,
                           np.ndarray), f"Unsupported audio type: {type(audio)}"
         duration = audio.shape[-1] / SAMPLE_RATE
@@ -138,10 +143,10 @@ def log_mel_spectrogram(
         audio = audio.astype(np.float32)
         audio = torch.from_numpy(audio)
 
-    if device is not None:
-        audio = audio.to(device)
-    if padding > 0:
-        audio = F.pad(audio, (0, padding))
+    if args.device is not None:
+        audio = audio.to(args.device)
+    if args.padding > 0:
+        audio = F.pad(audio, (0, args.padding))
     window = torch.hann_window(N_FFT).to(audio.device)
     stft = torch.stft(audio,
                       N_FFT,
@@ -150,18 +155,17 @@ def log_mel_spectrogram(
                       return_complex=True)
     magnitudes = stft[..., :-1].abs()**2
 
-    filters = mel_filters(audio.device, n_mels, mel_filters_dir)
+    filters = mel_filters(audio.device, args.n_mels, args.mel_filters_dir)
     mel_spec = filters @ magnitudes
 
     log_spec = torch.clamp(mel_spec, min=1e-10).log10()
     log_spec = torch.maximum(log_spec, log_spec.max() - 8.0)
     log_spec = (log_spec + 4.0) / 4.0
-    if return_duration:
+    if args.return_duration:
         return log_spec, duration
     else:
         return log_spec
     
-
 
 def process_input_audio(audio_path):
     # Covert the audio file into required sampling rate

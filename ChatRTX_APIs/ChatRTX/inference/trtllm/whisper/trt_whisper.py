@@ -35,7 +35,7 @@ class GenerateArgs:
     num_beams: int = 1
 
 import torch
-from ChatRTX.inference.trtllm.whisper.whisper_utils import log_mel_spectrogram
+from ChatRTX.inference.trtllm.whisper.whisper_utils import log_mel_spectrogram, LogMelSpectrogramArgs
 import tensorrt_llm
 import tensorrt_llm.logger as logger
 from tensorrt_llm._utils import (str_dtype_to_torch, str_dtype_to_trt,
@@ -203,6 +203,7 @@ class WhisperEncoding:
         config_path = engine_dir / 'encoder_config.json'
         with open(config_path, 'r') as f:
             config = json.load(f)
+
 
         dtype = config['builder_config']['precision']
         n_mels = config['builder_config']['n_mels']
@@ -425,11 +426,15 @@ def decode_audio_file(args: DecodeAudioArgs):
     else:
         # supporting only chinese and english for now. defaulting to english.
         text_prefix="<|startoftranscript|><|en|><|transcribe|><|notimestamps|>"
-    mel, total_duration = log_mel_spectrogram(args.input_file_path,
-                                              args.model.n_mels,
-                                              device='cuda',
-                                              return_duration=True,
-                                              mel_filters_dir=args.mel_filters_dir)
+    mel, total_duration = log_mel_spectrogram(
+        args.input_file_path,
+        LogMelSpectrogramArgs(
+            n_mels=args.model.n_mels,
+            device='cuda',
+            return_duration=True,
+            mel_filters_dir=args.mel_filters_dir
+        )
+    )
     mel = mel.type(str_dtype_to_torch(args.dtype))
     mel = mel.unsqueeze(0)
     # repeat the mel spectrogram to match the batch size
