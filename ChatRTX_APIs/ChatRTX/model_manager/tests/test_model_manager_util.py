@@ -2,7 +2,6 @@ import unittest
 from unittest.mock import patch, MagicMock
 import subprocess
 import sys
-import io
 
 # Mock missing dependencies
 sys.modules['ngcsdk'] = MagicMock()
