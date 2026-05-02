@@ -393,6 +393,7 @@ class ModelManager:
                 if model['id'] == model_id:
                     model['downloaded'] = False
                     model['setup_finished'] = False
+                    break
             self.config.write_default_config('models/supported', model_info_list)
 
             return True
