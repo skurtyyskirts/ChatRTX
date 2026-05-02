@@ -20,8 +20,6 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-
-
 import {
     app,
     BrowserWindow,
