@@ -70,7 +70,7 @@ class ChatRTX:
                 raise ValueError(f"Model ID '{model_id}' not found in the configuration.")
 
             if backend != "TRTLLM":
-                self._logger.error(f"Unsupported backend '%s'. Currently, only 'TRTLLM' is supported.", backend)
+                self._logger.error("Unsupported backend '%s'. Currently, only 'TRTLLM' is supported.", backend)
                 raise ValueError(f"Unsupported backend '{backend}'. Currently, only 'TRTLLM' is supported.")
 
             # Construct paths for model components
@@ -193,7 +193,6 @@ class ChatRTX:
 
             # Generate and print the streaming response using the language model
             response_tokens = self._llm.stream_complete(prompt)
-            total = ""
             for response in response_tokens:
                 yield response
                 

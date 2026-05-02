@@ -20,7 +20,6 @@
 # DEALINGS IN THE SOFTWARE.
 
 import ngcsdk
-import json
 import os
 import shutil
 import builtins
@@ -109,16 +108,16 @@ def download_model_with_monitoring(clt, model, path, output_capture):
 
 def parse_download_status(output):
     """Parse the download status and model path from captured output."""
-    download_status = "Download Status: Failed"
+    status = "FAILED"
     model_path = None
     for line in output.split('\n'):
-        if "Download status:" in line:
-            download_status = line.strip()
+        if "Download status:" in line and "COMPLETED" in line:
+            status = "COMPLETED"
         if "Downloaded local path model:" in line:
             model_path = line.split(":", 1)[1].strip()
         if "Downloaded local path resource:" in line:
             model_path = line.split(":", 1)[1].strip()
-    return "COMPLETED", model_path
+    return status, model_path
 
 
 def download_model(download_path, ngc_model_name):
