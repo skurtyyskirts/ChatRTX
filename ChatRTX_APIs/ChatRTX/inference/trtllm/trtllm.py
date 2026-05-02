@@ -28,6 +28,20 @@ from tensorrt_llm.runtime import ModelRunner, ModelRunnerCpp
 from tensorrt_llm.logger import logger
 from ChatRTX.inference.trtllm.utils import (DEFAULT_HF_MODEL_DIRS, load_tokenizer, read_model_name, throttle_generator)
 from ChatRTX.logger import ChatRTXLogger
+from dataclasses import dataclass
+
+@dataclass
+class TrtLlmConfig:
+    model_path: Optional[str] = None
+    tokenizer_dir: Optional[str] = None
+    vocab_file: Optional[str] = None
+    temperature: float = 0.1
+    max_new_tokens: int = 100
+    context_window: int = 2048
+    use_py_session: bool = True
+    add_special_tokens: bool = False
+    trtLlm_debug_mode: bool = False
+
 
 
 @dataclass
@@ -54,24 +68,16 @@ class TrtLlm():
 
     def __init__(
             self,
-            model_path: Optional[str] = None,
-            tokenizer_dir: Optional[str] = None,
-            vocab_file: Optional[str] = None,
-            temperature: float = 0.1,
-            max_new_tokens: int = 100,  # Your default value for max_new_tokens
-            context_window: int = 2048,  # Your default value for context_window
-            use_py_session=True,
-            add_special_tokens=False,
-            trtLlm_debug_mode=False
+            config: TrtLlmConfig
     ) -> None:
-        self._model_name, self._model_version = read_model_name(model_path)
-        self._max_input_tokens=context_window
-        self._add_special_tokens=add_special_tokens
-        self._max_new_tokens = max_new_tokens
-        self._temperature = temperature
+        self._model_name, self._model_version = read_model_name(config.model_path)
+        self._max_input_tokens = config.context_window
+        self._add_special_tokens = config.add_special_tokens
+        self._max_new_tokens = config.max_new_tokens
+        self._temperature = config.temperature
         self._logger = ChatRTXLogger.get_logger()
         try:
-            if tokenizer_dir is None:
+            if config.tokenizer_dir is None:
                 logger.warning(
                     "tokenizer_dir is not specified. Try to infer from model_name, but this may be incorrect."
                 )
@@ -80,30 +86,32 @@ class TrtLlm():
                     tokenizer_dir = 'gpt2'
                 else:
                     tokenizer_dir = DEFAULT_HF_MODEL_DIRS[self._model_name]
+            else:
+                tokenizer_dir = config.tokenizer_dir
 
             self._tokenizer, self._pad_id, self._end_id = load_tokenizer(
                 tokenizer_dir=tokenizer_dir,
-                vocab_file=vocab_file,
+                vocab_file=config.vocab_file,
                 model_name=self._model_name,
                 model_version=self._model_version,
                 #tokenizer_type=args.tokenizer_type,
             )
 
-            runner_cls = ModelRunner if use_py_session else ModelRunnerCpp
+            runner_cls = ModelRunner if config.use_py_session else ModelRunnerCpp
 
-            self._logger.debug(f"Trt-llm mode debug mode: {trtLlm_debug_mode}")
+            self._logger.debug(f"Trt-llm mode debug mode: {config.trtLlm_debug_mode}")
 
             runtime_rank = tensorrt_llm.mpi_rank()
-            runner_kwargs = dict(engine_dir=model_path,
+            runner_kwargs = dict(engine_dir=config.model_path,
                                  rank=runtime_rank,
-                                 debug_mode=trtLlm_debug_mode,
+                                 debug_mode=config.trtLlm_debug_mode,
                                  lora_ckpt_source='hf')
-            if not use_py_session:
+            if not config.use_py_session:
                 runner_kwargs.update(free_gpu_memory_fraction = 0.5)
             self._model = runner_cls.from_dir(**runner_kwargs)
         except Exception as e:
-            self._logger.error(f"Fail to create TRT-LLM object for model: {model_path}. \n Error: {str(e)}")
-            raise Exception(f"Fail to create TRT-LLM object for model: {model_path}. \n Error: {str(e)}")
+            self._logger.error(f"Fail to create TRT-LLM object for model: {config.model_path}. \n Error: {str(e)}")
+            raise Exception(f"Fail to create TRT-LLM object for model: {config.model_path}. \n Error: {str(e)}")
 
     def get_model_name(self):
         if self._model is not None:
