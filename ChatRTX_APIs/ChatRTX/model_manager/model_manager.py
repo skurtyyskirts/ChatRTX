@@ -255,6 +255,7 @@ class ModelManager:
                 for i in range(len(model_info_list_updated)):
                     if (model_info_list_updated[i]['id'] == model_id):
                         model_info_list_updated[i]['downloaded'] = True
+                        break
                 self.config.write_default_config('models/supported', model_info_list_updated)
             return status
         except KeyError as e:
