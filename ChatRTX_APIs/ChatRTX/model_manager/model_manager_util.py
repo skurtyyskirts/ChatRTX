@@ -25,6 +25,7 @@ import shutil
 import builtins
 import subprocess
 import requests
+import shlex
 from tqdm import tqdm
 import time
 import logging
@@ -59,7 +60,7 @@ def execute_command(command):
     """Executes a command in the command line."""
     try:
         # Launch the command and wait for it to finish
-        process = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.run(command, shell=False, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         # Decode and print the stdout and stderr from the command
         print(process.stdout.decode())
         print(process.stderr.decode())
@@ -72,12 +73,24 @@ def execute_command(command):
 def build_engine_for_model(model_info, checkpoints_local_dir, engine_local_dir):
     # Read the command from model_info
     engine_build_cmd = model_info['prerequisite']['engine_build_command']
-    # Replace placeholders with actual directory paths
-    engine_build_cmd_formatted = engine_build_cmd.replace('%checkpoints_local_dir%', f'"{checkpoints_local_dir}"').replace(
-        '%engine_dir%', f'"{engine_local_dir}"').replace("%output_timing_cache_dir%", f'"{engine_local_dir}"')
 
-    # Execute the formatted command
-    execute_command(engine_build_cmd_formatted)
+    # Split the command into arguments while preserving parts with spaces correctly
+    # Since the command in config.json is space-separated and doesn't contain paths yet,
+    # shlex.split is safe here.
+    command_args = shlex.split(engine_build_cmd)
+
+    # Replace placeholders in each argument
+    # This avoids command injection because each argument remains a single token
+    # even if the replacement string contains spaces or shell metacharacters.
+    formatted_args = []
+    for arg in command_args:
+        arg = arg.replace('%checkpoints_local_dir%', checkpoints_local_dir)
+        arg = arg.replace('%engine_dir%', engine_local_dir)
+        arg = arg.replace('%output_timing_cache_dir%', engine_local_dir)
+        formatted_args.append(arg)
+
+    # Execute the formatted command list
+    execute_command(formatted_args)
     engine_path = os.path.join(engine_local_dir, model_info['metadata']['engine'])
     if os.path.exists(engine_path):
         print("Engine build succeeded")
