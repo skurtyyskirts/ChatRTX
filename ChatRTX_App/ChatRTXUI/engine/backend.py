@@ -11,7 +11,7 @@ import time
 import random
 from ResponseUtility import getLocalLinksMarkdown, getImagesMarkdown
 from pynvml import nvmlInit, nvmlDeviceGetHandleByIndex, nvmlDeviceGetMemoryInfo
-from ChatRTX.inference.trtllm.whisper.trt_whisper import WhisperTRTLLM, decode_audio_file
+from ChatRTX.inference.trtllm.whisper.trt_whisper import WhisperTRTLLM, decode_audio_file, DecodeAudioArgs
 from ChatRTX.inference.trtllm.whisper.whisper_utils import process_input_audio
 import time
 import ctypes
@@ -413,7 +413,7 @@ class Backend:
         if self.active_model == "chatglm3_6b_AWQ_int4":
             self._logger.info(f"chinese model selected")
             language = "chinese"
-        transcription = decode_audio_file( new_file_path, self.whisper_model, language=language, mel_filters_dir=asr_assets_path)
+        transcription = decode_audio_file(DecodeAudioArgs(input_file_path=new_file_path, model=self.whisper_model, language=language, mel_filters_dir=asr_assets_path))
 
         if self.whisper_model is not None:        
             self.whisper_model.unload_model()
