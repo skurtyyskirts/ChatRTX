@@ -1,7 +1,5 @@
 import hashlib
-import os
 import subprocess
-import pytest
 from unittest.mock import patch, MagicMock
 
 from ChatRTX.model_manager.model_manager_util import (
@@ -17,19 +15,19 @@ from ChatRTX.model_manager.model_manager_util import (
 class TestExecuteCommand:
     def test_runs_successful_command(self):
         # Should not raise
-        execute_command("echo hello")
+        execute_command(["echo", "hello"])
 
     def test_handles_failed_command_without_raising(self):
         # CalledProcessError is caught internally and printed
-        execute_command("exit 1")
+        execute_command(["bash", "-c", "exit 1"])
 
     @patch("subprocess.run")
-    def test_calls_subprocess_with_shell_true(self, mock_run):
+    def test_calls_subprocess_with_shell_false(self, mock_run):
         mock_run.return_value = MagicMock(stdout=b"ok", stderr=b"")
-        execute_command("some command")
+        execute_command(["some", "command"])
         mock_run.assert_called_once()
         _, kwargs = mock_run.call_args
-        assert kwargs.get("shell") is True
+        assert kwargs.get("shell") is False
 
     @patch("subprocess.run")
     def test_captures_stdout_and_stderr(self, mock_run):
