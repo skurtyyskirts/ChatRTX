@@ -29,7 +29,7 @@ from ChatRTX.llm_prompt_templates import LLMPromptTemplate
 import faiss
 import os, json
 import gc, torch
-from ChatRTX.logger import ChatRTXLogger
+from ChatRTX.logger import ChatRTXLogger, LoggerConfig
 import shutil
 import logging
 class ChatRTXRag:
@@ -54,7 +54,7 @@ class ChatRTXRag:
         self._llm = None
         self._embedding_model = None
         self._embedding_dim = None
-        ChatRTXLogger(log_level=logging.INFO, log_file='chatRTX.log')
+        ChatRTXLogger(LoggerConfig(log_level=logging.INFO, log_file='chatRTX.log'))
         self._logger = ChatRTXLogger.get_logger()
         self._logger.info("ChatRTX RAG mode initialized with model directory: %s", self._model_directory)
         app_config = os.path.join(os.path.dirname(os.path.abspath(__file__)), "./config/app_config.json")

@@ -25,10 +25,10 @@ import gc
 import torch
 import logging
 import sys
-from ChatRTX.logger import ChatRTXLogger
+from ChatRTX.logger import ChatRTXLogger, LoggerConfig
 
 # Initialize logger
-ChatRTXLogger(log_level=logging.INFO)
+ChatRTXLogger(LoggerConfig(log_level=logging.INFO))
 
 # Define the directory where models will be downloaded
 model_download_dir = "C:\\ProgramData\\NVIDIA Corporation\\ChatRTX"

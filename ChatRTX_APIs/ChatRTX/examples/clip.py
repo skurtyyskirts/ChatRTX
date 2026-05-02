@@ -23,10 +23,10 @@ from ChatRTX.chatrtx import ChatRTX
 from ChatRTX.model_manager.model_manager import ModelManager
 import logging
 import sys
-from ChatRTX.logger import ChatRTXLogger
+from ChatRTX.logger import ChatRTXLogger, LoggerConfig
 
 # Initialize logger
-ChatRTXLogger(log_level=logging.INFO, log_file='chatRTX.log')
+ChatRTXLogger(LoggerConfig(log_level=logging.INFO, log_file='chatRTX.log'))
 logger = ChatRTXLogger.get_logger()
 
 # Define the directory where models will be downloaded
@@ -73,4 +73,3 @@ if not status:
     sys.exit(1)
 answer = chat_rtx.generate_clip_response(input_text=text_query, top_matches_path = input_matched_ouput, min_clip_score = min_clip_score)
 print(answer)
-

@@ -1,7 +1,7 @@
 from configuration import Configuration
 from ChatRTX.chatrtx import ChatRTX
 from ChatRTX.chatrtx_rag import ChatRTXRag
-from ChatRTX.logger import ChatRTXLogger
+from ChatRTX.logger import ChatRTXLogger, LoggerConfig
 import logging
 from ChatRTX.model_manager.model_manager import ModelManager
 import sys, os
@@ -28,7 +28,7 @@ class Backend:
 
     def __init__(self, model_setup_dir):
         self.config = Configuration()
-        ChatRTXLogger(log_level=logging.INFO, log_file=self.config.expand_programdata_path(self.log_path))
+        ChatRTXLogger(LoggerConfig(log_level=logging.INFO, log_file=self.config.expand_programdata_path(self.log_path)))
         self._logger = ChatRTXLogger.get_logger()
 
         self.active_model = None
@@ -226,7 +226,7 @@ class Backend:
                     yield partial_response
 
                 elif len(response.source_nodes) == 0:
-                    yield "Problem generating response: Data source may be empty or unsupported – Ensure dataset compatibility with the AI model. Alternatively, try ‘Chat with AI model data’."
+                    yield "Problem generating response: Data source may be empty or unsupported – Ensure dataset compatibility with the AI model. Alternatively, try 'Chat with AI model data'."
 
                 else:
                     raise ValueError(f"Invalid Node values")
