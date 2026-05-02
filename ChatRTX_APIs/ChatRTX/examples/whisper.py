@@ -22,7 +22,6 @@
 from pynvml import nvmlInit, nvmlDeviceGetHandleByIndex, nvmlDeviceGetMemoryInfo
 from ChatRTX.inference.trtllm.whisper.trt_whisper import WhisperTRTLLM, decode_audio_file
 from ChatRTX.inference.trtllm.whisper.whisper_utils import process_input_audio
-import time
 import threading
 
 
@@ -36,7 +35,7 @@ audio_path="C:\\neva-git\\todelete\\1221-135766-0002.wav"
 
 
 def mic_init_handler():
-    global whisper_model, whisper_model_loaded, enable_asr
+    global whisper_model, enable_asr
     enable_asr = True
     if not enable_asr:
         return False
