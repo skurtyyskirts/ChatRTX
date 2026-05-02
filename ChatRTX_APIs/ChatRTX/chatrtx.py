@@ -19,7 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from ChatRTX.inference.trtllm.trtllm import TrtLlm
+from ChatRTX.inference.trtllm.trtllm import TrtLlm, TrtLlmConfig
 from ChatRTX.inference.pytorch.CLIP import ClipInference
 from ChatRTX.llm_prompt_templates import LLMPromptTemplate
 import os, json
@@ -70,7 +70,7 @@ class ChatRTX:
                 raise ValueError(f"Model ID '{model_id}' not found in the configuration.")
 
             if backend != "TRTLLM":
-                self._logger.error(f"Unsupported backend '%s'. Currently, only 'TRTLLM' is supported.", backend)
+                self._logger.error("Unsupported backend '%s'. Currently, only 'TRTLLM' is supported.", backend)
                 raise ValueError(f"Unsupported backend '{backend}'. Currently, only 'TRTLLM' is supported.")
 
             # Construct paths for model components
@@ -97,7 +97,7 @@ class ChatRTX:
             trtLlm_debug_mode = kwqags['trtLlm_debug_mode'] if 'trtLlm_debug_mode' in kwqags else self._app_config_info['trtLlm_debug_mode']
 
             # Initialize the TrtLlm object
-            self._llm = TrtLlm(
+            config = TrtLlmConfig(
                 model_path=model_path,
                 tokenizer_dir=tokenizer_dir,
                 temperature=model_info["metadata"].get("temperature", 0.1),
@@ -108,6 +108,7 @@ class ChatRTX:
                 add_special_tokens=add_special_tokens,
                 trtLlm_debug_mode=trtLlm_debug_mode
             )
+            self._llm = TrtLlm(config)
             return True
         except Exception as e:
             self._logger.error(f"Failed to init TRTLLM model object: Error {str(e)}")
@@ -193,7 +194,6 @@ class ChatRTX:
 
             # Generate and print the streaming response using the language model
             response_tokens = self._llm.stream_complete(prompt)
-            total = ""
             for response in response_tokens:
                 yield response
                 

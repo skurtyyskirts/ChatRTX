@@ -70,7 +70,7 @@ try:
     # Initialize the LlamaIndex LLM model with the specified model ID
     status = chat_rtx_rag.init_llamaIndex_llm(model_id)
     if not status:
-        logger.error(f"Failed to load the model: {model_id}")
+        logging.error(f"Failed to load the model: {model_id}")
         sys.exit(1)
 
     # Set the embedding model

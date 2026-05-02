@@ -21,7 +21,6 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-
 const { join } = require('path')
 const { v4: uuidv4 } = require('uuid')
 

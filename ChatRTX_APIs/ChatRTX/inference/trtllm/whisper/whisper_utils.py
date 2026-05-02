@@ -20,8 +20,6 @@
 # DEALINGS IN THE SOFTWARE.
 import os
 from functools import lru_cache
-from pathlib import Path
-from subprocess import CalledProcessError, run
 from typing import Optional, Union
 
 import numpy as np
@@ -31,7 +29,6 @@ import torch.nn.functional as F
 
 from scipy.io import wavfile
 import scipy.signal as sps
-import numpy as np
 
 SAMPLE_RATE = 16000
 N_FFT = 400
