@@ -11,10 +11,9 @@ import time
 import threading
 import random
 from ResponseUtility import getLocalLinksMarkdown, getImagesMarkdown
-from pynvml import nvmlInit, nvmlDeviceGetHandleByIndex, nvmlDeviceGetMemoryInfo
+from pynvml import nvmlDeviceGetHandleByIndex, nvmlDeviceGetMemoryInfo
 from ChatRTX.inference.trtllm.whisper.trt_whisper import WhisperTRTLLM, decode_audio_file
 from ChatRTX.inference.trtllm.whisper.whisper_utils import process_input_audio
-import time
 import ctypes
 
 class Mode(Enum):

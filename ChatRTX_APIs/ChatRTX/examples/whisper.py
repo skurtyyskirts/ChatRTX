@@ -54,7 +54,7 @@ def mic_init_handler():
 
 def mic_recording_done_handler(audio_path):
     transcription = ""
-    global whisper_model, enable_asr, whisper_model_loaded
+    global whisper_model, whisper_model_loaded
     if not enable_asr:
         return ""
     

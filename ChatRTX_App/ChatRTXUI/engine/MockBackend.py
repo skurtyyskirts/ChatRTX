@@ -118,9 +118,10 @@ class Backend:
         status = self._rand_handle()
         if status:
             modelInfo = self.config.get_config('models/supported')
-            for i in range(len(modelInfo)):
-                if modelInfo[i]['id'] == model_id:
-                    modelInfo[i]['downloaded'] = True
+            for model in modelInfo:
+                if model['id'] == model_id:
+                    model['downloaded'] = True
+                    break
             self.config.write_default_config('models/supported', modelInfo)
         return status
 
@@ -129,9 +130,10 @@ class Backend:
         status = self._rand_handle()
         if status:
             modelInfo = self.config.get_config('models/supported')
-            for i in range(len(modelInfo)):
-                if modelInfo[i]['id'] == model_id:
-                    modelInfo[i]['setup_finished'] = True
+            for model in modelInfo:
+                if model['id'] == model_id:
+                    model['setup_finished'] = True
+                    break
             self.config.write_default_config('models/supported', modelInfo)
 
         self._logger.info(f"Install model status {status}")
@@ -143,10 +145,11 @@ class Backend:
         success = self._rand_handle()
         if success:
             modelInfo = self.config.get_config('models/supported')
-            for i in range(len(modelInfo)):
-                if modelInfo[i]['id'] == model_id:
-                    modelInfo[i]['setup_finished'] = False
-                    modelInfo[i]['downloaded'] = False
+            for model in modelInfo:
+                if model['id'] == model_id:
+                    model['setup_finished'] = False
+                    model['downloaded'] = False
+                    break
             self.config.write_default_config('models/supported', modelInfo)
         return success
 
