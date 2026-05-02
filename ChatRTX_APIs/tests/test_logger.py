@@ -81,3 +81,8 @@ class TestChatRTXLoggerFileHandler:
         with open(log_file) as f:
             content = f.read()
         assert "test message written to file" in content
+
+    def test_bare_filename_does_not_crash(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        ChatRTXLogger(log_level=logging.INFO, log_file="ChatRTX.log")
+        assert os.path.exists(tmp_path / "ChatRTX.log")

@@ -223,12 +223,13 @@ class TrtLlmAPI(CustomLLM):
         return stream_completion_response_to_chat_response(completion_response)
 
     @llm_completion_callback()
-    def complete(self, prompt: str, **kwargs: Any) -> CompletionResponse:
+    def complete(self, prompt: str, formatted: bool = False, **kwargs: Any) -> CompletionResponse:
         """
         Generate a completion response from a given prompt.
 
         Args:
             prompt (str): The prompt to process.
+            formatted (bool): Indicates whether the prompt is pre-formatted.
             kwargs (dict): Additional keyword arguments for completion generation.
 
         Returns:
