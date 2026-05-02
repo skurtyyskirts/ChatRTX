@@ -110,9 +110,9 @@ export default function FineTuningSection({ modelId }: { modelId: ModelId }) {
         ) {
             setShowFineTuningCard(true)
         }
-        if (!isBaseModelDownloadInit) {
-            // TODO: Start downloading base model only once
+        if (event.target.checked && !isBaseModelDownloadInit) {
             console.log('Downloading base model ', isBaseModelDownloadInit)
+            clientAPI.downloadBaseModel(modelId)
             setIsBaseModelDownloadInit(true)
             setIsBaseModeDownloading(true)
         }
