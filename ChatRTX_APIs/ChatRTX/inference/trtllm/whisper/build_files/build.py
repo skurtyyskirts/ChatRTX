@@ -155,7 +155,7 @@ def add_quantization_and_output_arguments(parser):
     parser.add_argument("--debug_mode", action="store_true")
 
 
-def parse_arguments():
+def create_parser():
     parser = argparse.ArgumentParser()
     add_model_arguments(parser)
     add_plugin_arguments(parser)
@@ -191,37 +191,29 @@ def parse_arguments():
     return args
 
 
-def build_encoder(model, args):
-    model_metadata = model["dims"]
-    model_params = model["model_state_dict"]
+def parse_arguments():
+    return create_parser()
 
-    # cast params according dtype
-    for k, v in model_params.items():
-        model_params[k] = v.to(str_dtype_to_torch(args.dtype))
 
-    builder = Builder()
-
-    max_batch_size = args.max_batch_size
-    hidden_states = model_metadata["n_audio_state"]
-    num_heads = model_metadata["n_audio_head"]
-    num_layers = model_metadata["n_audio_layer"]
-
+def create_encoder_builder_config(builder, model_metadata, args):
     model_is_multilingual = model_metadata["n_vocab"] >= 51865
 
-    builder_config = builder.create_builder_config(
+    return builder.create_builder_config(
         name=MODEL_ENCODER_NAME,
         precision=args.dtype,
         tensor_parallel=1,
-        num_layers=num_layers,
-        num_heads=num_heads,
-        hidden_size=hidden_states,
-        max_batch_size=max_batch_size,
+        num_layers=model_metadata["n_audio_layer"],
+        num_heads=model_metadata["n_audio_head"],
+        hidden_size=model_metadata["n_audio_state"],
+        max_batch_size=args.max_batch_size,
         max_beam_width=args.max_beam_width,
         int8=args.quant_mode.has_act_or_weight_quant(),
         n_mels=model_metadata["n_mels"],
         num_languages=model_metadata["n_vocab"] - 51765 - int(model_is_multilingual),
     )
 
+
+def create_encoder_model(model_metadata, model_params, args):
     tensorrt_llm_whisper_encoder = tensorrt_llm.models.WhisperEncoder(
         model_metadata["n_mels"],
         model_metadata["n_audio_ctx"],
@@ -245,6 +237,10 @@ def build_encoder(model, args):
         use_gemm_woq_plugin,
     )
 
+    return tensorrt_llm_whisper_encoder
+
+
+def setup_encoder_network(builder, tensorrt_llm_whisper_encoder, args):
     network = builder.create_network()
     network.plugin_config.to_legacy_setting()
 
@@ -258,6 +254,8 @@ def build_encoder(model, args):
         network.plugin_config.set_context_fmha(ContextFMHAType.enabled)
     if args.remove_input_padding:
         network.plugin_config.enable_remove_input_padding()
+
+    use_gemm_woq_plugin = args.use_gemm_plugin and args.use_weight_only
     if use_gemm_woq_plugin:
         network.plugin_config.set_weight_only_quant_matmul_plugin(dtype=args.dtype)
 
@@ -270,19 +268,10 @@ def build_encoder(model, args):
             for k, v in tensorrt_llm_whisper_encoder.named_network_outputs():
                 network._mark_output(v, k, str_dtype_to_trt(args.dtype))
 
-    engine = None
-    engine_name = get_engine_name(MODEL_ENCODER_NAME, args.dtype, 1, 0)
-
-    engine = builder.build_engine(network, builder_config)
-
-    config_path = os.path.join(args.output_dir, "encoder_config.json")
-    builder.save_config(builder_config, config_path)
-
-    serialize_engine(engine, os.path.join(args.output_dir, engine_name))
+    return network
 
 
-def build_decoder(model, args):
-
+def build_encoder(model, args):
     model_metadata = model["dims"]
     model_params = model["model_state_dict"]
 
@@ -292,8 +281,24 @@ def build_decoder(model, args):
 
     builder = Builder()
 
+    builder_config = create_encoder_builder_config(builder, model_metadata, args)
+    tensorrt_llm_whisper_encoder = create_encoder_model(
+        model_metadata, model_params, args
+    )
+    network = setup_encoder_network(builder, tensorrt_llm_whisper_encoder, args)
+
+    engine_name = get_engine_name(MODEL_ENCODER_NAME, args.dtype, 1, 0)
+    engine = builder.build_engine(network, builder_config)
+
+    config_path = os.path.join(args.output_dir, "encoder_config.json")
+    builder.save_config(builder_config, config_path)
+
+    serialize_engine(engine, os.path.join(args.output_dir, engine_name))
+
+
+def create_decoder_builder_config(builder, model_metadata, args):
     timing_cache_file = os.path.join(args.output_dir, "decoder_model.cache")
-    builder_config = builder.create_builder_config(
+    return builder.create_builder_config(
         name=MODEL_DECODER_NAME,
         precision=args.dtype,
         timing_cache=timing_cache_file,
@@ -316,6 +321,8 @@ def build_decoder(model, args):
         int8=args.quant_mode.has_act_or_weight_quant(),
     )
 
+
+def create_decoder_model(model_metadata, model_params, args):
     tensorrt_llm_whisper_decoder = tensorrt_llm.models.DecoderModel(
         num_layers=model_metadata["n_text_layer"],
         num_heads=model_metadata["n_text_head"],
@@ -352,7 +359,10 @@ def build_decoder(model, args):
     use_gemm_woq_plugin = args.use_gemm_plugin and args.use_weight_only
 
     load_decoder_weight(tensorrt_llm_whisper_decoder, model_params, use_gemm_woq_plugin)
+    return tensorrt_llm_whisper_decoder
 
+
+def setup_decoder_network(builder, tensorrt_llm_whisper_decoder, model_metadata, args):
     network = builder.create_network()
     network.plugin_config.to_legacy_setting()
 
@@ -366,6 +376,8 @@ def build_decoder(model, args):
         network.plugin_config.set_context_fmha(ContextFMHAType.enabled)
     if args.remove_input_padding:
         network.plugin_config.enable_remove_input_padding()
+
+    use_gemm_woq_plugin = args.use_gemm_plugin and args.use_weight_only
     if use_gemm_woq_plugin:
         network.plugin_config.set_weight_only_quant_matmul_plugin(dtype=args.dtype)
 
@@ -384,9 +396,29 @@ def build_decoder(model, args):
             for k, v in tensorrt_llm_whisper_decoder.named_network_outputs():
                 network._mark_output(v, k, str_dtype_to_trt(args.dtype))
 
-    engine = None
-    engine_name = get_engine_name(MODEL_DECODER_NAME, args.dtype, 1, 0)
+    return network
 
+
+def build_decoder(model, args):
+
+    model_metadata = model["dims"]
+    model_params = model["model_state_dict"]
+
+    # cast params according dtype
+    for k, v in model_params.items():
+        model_params[k] = v.to(str_dtype_to_torch(args.dtype))
+
+    builder = Builder()
+
+    builder_config = create_decoder_builder_config(builder, model_metadata, args)
+    tensorrt_llm_whisper_decoder = create_decoder_model(
+        model_metadata, model_params, args
+    )
+    network = setup_decoder_network(
+        builder, tensorrt_llm_whisper_decoder, model_metadata, args
+    )
+
+    engine_name = get_engine_name(MODEL_DECODER_NAME, args.dtype, 1, 0)
     engine = builder.build_engine(network, builder_config)
 
     config_path = os.path.join(args.output_dir, "decoder_config.json")
