@@ -19,4 +19,3 @@ datasets==2.14.6
 rouge_score~=0.1.2
 docx2txt==0.8
 soundfile==0.12.1
-ctype==7.4.2
