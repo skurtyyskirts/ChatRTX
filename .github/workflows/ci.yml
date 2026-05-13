@@ -1,9 +1,14 @@
+<<<<<<< HEAD
 name: CI
+=======
+name: CI – Test & Auto-Fix
+>>>>>>> 52e7b95 (feat: add automated self-healing CI/CD loop)
 
 on:
   push:
     branches: ["**"]
   pull_request:
+<<<<<<< HEAD
     branches: ["release/**", "main"]
 
 jobs:
@@ -48,10 +53,34 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Python
+=======
+    branches: ["**"]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  # 1. Run the test suite
+  # ────────────────────────────────────────────────────────────────────────────
+  test:
+    name: pytest
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so the AI fixer can push a commit back
+          fetch-depth: 0
+
+      - name: Set up Python 3.10
+>>>>>>> 52e7b95 (feat: add automated self-healing CI/CD loop)
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
+<<<<<<< HEAD
       - name: Install test dependencies
         run: pip install -r ChatRTX_APIs/tests/requirements-test.txt
 
@@ -69,3 +98,96 @@ jobs:
         with:
           name: coverage-report
           path: coverage.xml
+=======
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          # Install only the packages needed for the pure-Python test suite.
+          # Heavy GPU dependencies (tensorrt-llm, torch, etc.) are skipped in CI.
+          pip install pytest pytest-cov
+
+      - name: Run tests
+        id: run_tests
+        # Continue so the AI-fix step can act on failures
+        continue-on-error: true
+        run: |
+          pytest tests/ \
+            --tb=short \
+            --junitxml=reports/result.xml \
+            -v \
+            2>&1 | tee reports/pytest_output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: reports/
+
+      # ── Fail the job if tests failed (after uploading artifacts) ──────────
+      - name: Assert tests passed
+        if: steps.run_tests.outputs.exit_code != '0'
+        run: exit 1
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # 2. AI remediation — only runs when tests fail on a non-main branch
+  # ────────────────────────────────────────────────────────────────────────────
+  ai_fix:
+    name: AI Auto-Fix
+    needs: test
+    if: |
+      failure() &&
+      github.ref != 'refs/heads/main' &&
+      github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install fixer dependencies
+        run: pip install pytest anthropic PyGithub
+
+      - name: Download test reports
+        uses: actions/download-artifact@v4
+        with:
+          name: test-reports
+          path: reports/
+
+      - name: Run AI fixer
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN:      ${{ secrets.GH_PAT }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          BRANCH_NAME:       ${{ github.ref_name }}
+        run: python scripts/ai_fixer.py --logs reports/pytest_output.txt
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # 3. Auto-merge — only runs when tests pass on a PR
+  # ────────────────────────────────────────────────────────────────────────────
+  auto_merge:
+    name: Enable Auto-Merge
+    needs: test
+    if: |
+      success() &&
+      github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Enable auto-merge on PR
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          gh pr merge "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --squash \
+            --auto
+>>>>>>> 52e7b95 (feat: add automated self-healing CI/CD loop)

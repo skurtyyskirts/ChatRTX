@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Python
 __pycache__/
 *.pyc
@@ -24,3 +25,15 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+=======
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+pytest-cache-files-*/
+reports/
+*.egg-info/
+dist/
+.env
+*.log
+>>>>>>> 52e7b95 (feat: add automated self-healing CI/CD loop)
