@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python*)",
+      "Bash(pytest*)",
+      "Bash(pip install*)",
+      "Bash(git log*)",
+      "Bash(git diff*)",
+      "Bash(git status*)",
+      "Bash(git add*)",
+      "Bash(grep*)",
+      "Bash(find . *)",
+      "Bash(ls*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "printf '\\n=== SESSION ENDING — ChatRTX ===\\nRemember to:\\n  1. Document changes in CHANGELOG or README\\n  2. Run tests if applicable\\n  3. Push changes\\n================================\\n'"
+          }
+        ]
+      }
+    ]
+  }
+}
