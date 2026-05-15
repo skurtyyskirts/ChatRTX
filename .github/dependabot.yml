@@ -1,0 +1,42 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [dependencies, automerge]
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: pip
+    directory: /ChatRTX_APIs
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [dependencies, automerge]
+    open-pull-requests-limit: 5
+    groups:
+      python:
+        patterns: ["*"]
+  - package-ecosystem: pip
+    directory: /ChatRTX_APIs/ChatRTX
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [dependencies, automerge]
+    open-pull-requests-limit: 5
+    groups:
+      python:
+        patterns: ["*"]
+  - package-ecosystem: pip
+    directory: /ChatRTX_App
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [dependencies, automerge]
+    open-pull-requests-limit: 5
+    groups:
+      python:
+        patterns: ["*"]
