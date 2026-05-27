@@ -58,25 +58,31 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Open housekeeping issue
+        # Step outputs are passed via env (NOT interpolated into the script body)
+        # so branch names / paths containing shell metacharacters can't be
+        # re-evaluated as code.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STALE_BRANCHES: ${{ steps.stale_branches.outputs.stale }}
+          LARGE_FILES: ${{ steps.large_files.outputs.large }}
+          ARTIFACTS: ${{ steps.artifacts.outputs.artifacts }}
         run: |
           today=$(date -u +%F)
           body="Automated weekly housekeeping pass.
 
 ## Stale branches (>60 days)
 \`\`\`
-${{ steps.stale_branches.outputs.stale }}
+${STALE_BRANCHES}
 \`\`\`
 
 ## Large files (>5M)
 \`\`\`
-${{ steps.large_files.outputs.large }}
+${LARGE_FILES}
 \`\`\`
 
 ## Patch / scratch files at repo root
 \`\`\`
-${{ steps.artifacts.outputs.artifacts }}
+${ARTIFACTS}
 \`\`\`
 
 Run \`/agents repo-housekeeper\` interactively for a deeper sweep."

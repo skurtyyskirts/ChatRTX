@@ -1,7 +1,11 @@
 name: Dependabot auto-approve patch/minor
 
 on:
-  pull_request:
+  # pull_request_target runs in the base-repo context with a write token.
+  # Dependabot pull_request events only get a read-only token, so approve/label
+  # would fail. We never check out or execute the PR's code here (metadata only),
+  # which keeps pull_request_target safe.
+  pull_request_target:
     types: [opened, reopened, synchronize]
 
 permissions:
@@ -25,9 +29,12 @@ jobs:
           steps.meta.outputs.update-type == 'version-update:semver-minor'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+          DEP_NAMES: ${{ steps.meta.outputs.dependency-names }}
         run: |
-          gh pr review --approve "${{ github.event.pull_request.number }}" \
-            -b "Auto-approving Dependabot ${{ steps.meta.outputs.update-type }} bump for ${{ steps.meta.outputs.dependency-names }}."
+          gh pr review --approve "$PR_NUMBER" \
+            -b "Auto-approving Dependabot ${UPDATE_TYPE} bump for ${DEP_NAMES}."
 
       - name: Label for auto-merge
         if: >-
@@ -35,5 +42,6 @@ jobs:
           steps.meta.outputs.update-type == 'version-update:semver-minor'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh pr edit "${{ github.event.pull_request.number }}" --add-label automerge || true
+          gh pr edit "$PR_NUMBER" --add-label automerge || true

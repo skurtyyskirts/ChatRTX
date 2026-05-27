@@ -15,11 +15,10 @@
       "Bash(head:*)",
       "Bash(tail:*)",
       "Bash(wc:*)",
-      "Bash(pip list:*)",
+      "Bash(pip list)",
       "Bash(pip show:*)",
-      "Bash(python -c:*)",
       "Bash(python -V)",
-      "Bash(pytest -k:*)",
+      "Bash(python --version)",
       "Bash(pytest --collect-only)",
       "Bash(gh pr list:*)",
       "Bash(gh pr view:*)",
@@ -31,9 +30,16 @@
       "Bash(gh run view:*)"
     ],
     "deny": [
+      "Bash(python -c:*)",
+      "Bash(python3 -c:*)",
       "Bash(rm -rf:*)",
+      "Bash(rm -fr:*)",
+      "Bash(sudo:*)",
       "Bash(git push --force:*)",
-      "Bash(git reset --hard:*)"
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -f:*)",
+      "Bash(chmod:*)"
     ]
   }
 }

@@ -15,11 +15,16 @@ You score RAG answers. You don't redesign the pipeline; you measure it.
 5. **Latency**: ms end-to-end (informational)
 
 ## Procedure
-1. Find eval set: `docs/eval/` or `tests/eval/` or `ChatRTX_App/eval/`
-2. Run pipeline against each Q (use existing CLI / API, don't invent)
-3. Score each answer with rubric above
+1. Find the eval set: check `docs/eval/`, `tests/eval/`, `ChatRTX_App/eval/`.
+   **If none exists, STOP and report** — do not fabricate scores:
+   ```
+   HOLD: no eval set found. Create one at docs/eval/ as JSONL of
+   {question, expected_facts, source_doc} before this agent can score.
+   ```
+2. Run the pipeline against each Q using the existing CLI / API (don't invent one)
+3. Score each answer with the rubric above
 4. Aggregate: mean Groundedness, mean Relevance, hallucination rate, citation accuracy
-5. Compare against prior baseline (look for `eval-baseline.json` or similar)
+5. Compare against `eval-baseline.json` if it exists; otherwise declare this run the baseline and say so explicitly
 
 ## Output
 ```markdown
